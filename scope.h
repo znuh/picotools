@@ -22,6 +22,7 @@ typedef struct scope_config_s {
 	
 	// channels
 	PS5000_RANGE range[2];
+	float f_range[2];
 	uint8_t channel_config; // (AC/DC, enabled) * 2
 	
 	// number of samples
@@ -30,11 +31,15 @@ typedef struct scope_config_s {
 	// timebase (srate)
 	unsigned long timebase;
 	
+	PS5000_CHANNEL trig_ch;
+	int trig_enabled;
+	short trig_level;
+	
 	// depends on trig. src
 	TRIGGER_CONDITIONS trig_cond;
 	
 	// depends on trig. edge
-	THRESHOLD_DIRECTION trig_dir[6];
+	THRESHOLD_DIRECTION trig_dir;
 	
 	// depends on trig. src + trg. voltage
 	TRIGGER_CHANNEL_PROPERTIES trig_prop;

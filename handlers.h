@@ -22,7 +22,8 @@
 GtkLabel *samples_lbl;
 GtkLabel *srate_lbl;
 GtkLabel *trig_volt_lbl;
-GtkLabel *trig_ofs_lbl;
+GtkLabel *trig_pre_lbl;
+GtkLabel *trig_post_lbl;
 GtkLabel *time_lbl;
 
 GtkToggleButton *single_btn;

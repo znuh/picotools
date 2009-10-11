@@ -94,8 +94,12 @@ void PREF4 CallBackBlock(
 	sprintf(fname,"%ld.txt",time(NULL));
 	fl=fopen(fname,"w");
 	
-	for(cnt=0; cnt<scnt; cnt++)
-		fprintf(fl,"%d\n",d[cnt]);
+	for(cnt=0; cnt<scnt; cnt++) {
+		float scaled, val = d[cnt];
+		scaled = val * scope_config.f_range[0]; // scale to Volts
+		scaled /= PS5000_MAX_VALUE;
+		fprintf(fl,"%f\n",scaled);
+	}
 	
 	fclose(fl);
 	

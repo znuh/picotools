@@ -34,7 +34,8 @@ int main(int argc, char **argv) {
 	assert((srate_lbl = GTK_LABEL(glade_xml_get_widget(glade, "srate_lbl"))));
 	assert((time_lbl = GTK_LABEL(glade_xml_get_widget(glade, "time_lbl"))));
 	assert((trig_volt_lbl = GTK_LABEL(glade_xml_get_widget(glade, "trig_volt_lbl"))));
-	assert((trig_ofs_lbl = GTK_LABEL(glade_xml_get_widget(glade, "trig_ofs_lbl"))));
+	assert((trig_pre_lbl = GTK_LABEL(glade_xml_get_widget(glade, "trig_pre_lbl"))));
+	assert((trig_post_lbl = GTK_LABEL(glade_xml_get_widget(glade, "trig_post_lbl"))));
 	assert((single_btn = GTK_TOGGLE_BUTTON(glade_xml_get_widget(glade, "single_btn"))));
 	
 	if(argc>1) {
