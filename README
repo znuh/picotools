@@ -1,1 +1,7 @@
 not for endusers yet
+
+status:
+- setting AC/DC mode & voltage ranges working
+- samplebuf/rate config mostly working
+  (TODO: special cases when using 2 channels (<=500MS/s, max. 64MS buf))
+- dump CH1 to txt file working in single mode without trigger
