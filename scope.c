@@ -24,6 +24,8 @@ scope_config_t scope_config;
 short handle;
 static int initialized = 0;
 
+extern unsigned long ns;
+
 int scope_open(void) {
 	PICO_STATUS res = ps5000OpenUnit(&handle);
 	assert(res == PICO_OK);
@@ -79,31 +81,57 @@ void PREF4 CallBackBlock(
 	unsigned long scnt = scope_config.samples;
 	FILE *fl;
 	int cnt;
-	short *d;
+	short *d1=NULL, *d2=NULL;
 
-	assert((d = malloc(scope_config.samples * sizeof(short))));
-	
-	ps5000SetDataBuffer(handle, 0, d, scope_config.samples);
-	
 	// notify gui (gui will call scope_stop)
 	// TODO: my feelings tell me there could be some threading issues?
-	single_done();
+	single_done();	
 	
-	ps5000GetValues(handle, 0, &scnt, 1, RATIO_MODE_NONE, 0, NULL);
+	// 1st channel active
+	if((scope_config.channel_config>>0)&1) {
+		assert((d1 = malloc(scope_config.samples * sizeof(short))));
+		assert(ps5000SetDataBuffer(handle, PS5000_CHANNEL_A, d1, scope_config.samples) == PICO_OK);
+		assert(ps5000GetValues(handle, 0, &scnt, 1, RATIO_MODE_NONE, 0, NULL) == PICO_OK);
+	}
+	
+	// 2nd channel active
+	if((scope_config.channel_config>>1)&1) {
+		assert((d2 = malloc(scope_config.samples * sizeof(short))));
+		assert(ps5000SetDataBuffer(handle, PS5000_CHANNEL_B, d2, scope_config.samples) == PICO_OK);
+		assert(ps5000GetValues(handle, 0, &scnt, 1, RATIO_MODE_NONE, 0, NULL) == PICO_OK);
+	}
 	
 	sprintf(fname,"%ld.txt",time(NULL));
 	fl=fopen(fname,"w");
 	
 	for(cnt=0; cnt<scnt; cnt++) {
-		float scaled, val = d[cnt];
-		scaled = val * scope_config.f_range[0]; // scale to Volts
-		scaled /= PS5000_MAX_VALUE;
-		fprintf(fl,"%f\n",scaled);
+		float scaled_a, scaled_b, vala, valb;
+		double tstamp = cnt;
+		if(d1) {
+			vala=d1[cnt];
+			scaled_a = vala * scope_config.f_range[0]; // scale to Volts
+			scaled_a /= PS5000_MAX_VALUE;	
+		}
+		if(d2) {
+			valb=d2[cnt];
+			scaled_b = valb * scope_config.f_range[1]; // scale to Volts
+			scaled_b /= PS5000_MAX_VALUE;
+		}
+		tstamp *= ns;
+		tstamp /= 1000000000;
+		
+		if((d1) && (d2))
+			fprintf(fl,"%e %f %f\n",tstamp,scaled_a,scaled_b);
+		else if(d1)
+			fprintf(fl,"%e %f\n",tstamp,scaled_a);
+		else if(d2)
+			fprintf(fl,"%e %f\n",tstamp,scaled_b);
 	}
 	
 	fclose(fl);
 	
-	free(d);
+	free(d1);
+	free(d2);
 }
 
 int scope_run(int single) {

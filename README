@@ -4,4 +4,5 @@ status:
 - setting AC/DC mode & voltage ranges working
 - samplebuf/rate config mostly working
   (TODO: special cases when using 2 channels (<=500MS/s, max. 64MS buf))
-- dump CH1 to txt file working in single mode without trigger
+- dump channels to txt file working in single mode without trigger
+  (gnuplot: plot './1255282775.txt' using 1:2 with lines, './1255282775.txt' using 1:3 with lines for 2 channels)
