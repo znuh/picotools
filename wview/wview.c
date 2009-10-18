@@ -47,29 +47,31 @@ extern struct sdl_ctx sdl;
 
 int last = -1;
 
-void sample_draw(wview_t *wv, int x, float y) {
+void sample_draw(wview_t *wv, int x, float y, uint32_t color) {
+	// TODO: y range checks (top/bottom)
 	//printf("%f\n",y);
 	if(last >= 0)
-		aalineColor(sdl.screen,x-1,last,x,256-y, 0x8080ffff);
-	last = 256-y;
+		aalineColor(sdl.screen,x-1,last,x,y, color);
+	last = y;
 	//pixelColor(sdl.screen, x, 256-y, 0xffffffff);
 }
 
 void wview_redraw(wview_t *wv) {
+	uint32_t color[] = {0x8080ffff, 0xff8080ff};
 	float x_zoom = (float)wv->target_w / (float)wv->x_cnt;
 	unsigned long scnt;
-	unsigned long samples_per_pixel = wv->x_cnt / wv->target_w;
+	int samples_per_pixel = wv->x_cnt / wv->target_w;
 	int buf_cnt;
-	int x = 0;
 	
 	//printf("x_zoom %f\n",x_zoom);
 	//printf("%ld samples/pixel\n",samples_per_pixel);
 	
-	last = -1;
-	
 	for(buf_cnt = 0; buf_cnt < wv->sbuf_cnt; buf_cnt++) {
-		samplebuf_t *sbuf = wv->sbuf+buf_cnt;
+		samplebuf_t *sbuf = &(wv->sbuf[buf_cnt]);
 		float avg = 0;
+		int x = 0;
+		
+		last = -1;
 		
 		for(scnt=0; scnt < wv->x_cnt; scnt++) {
 			float val = samplebuf_get_sample(sbuf, wv->x_pos + scnt);
@@ -80,8 +82,12 @@ void wview_redraw(wview_t *wv) {
 			
 			// draw every m'th pixel with alpha
 			if(!((scnt+1) % samples_per_pixel)) {
+				float val = avg/(float)samples_per_pixel;
+				val *= 256; //(wv->y_cnt);
+				val /= (sbuf->max_val - sbuf->min_val);
+				val = sbuf->y_ofs - val;
 				//printf("%f\n",avg/samples_per_pixel);
-				sample_draw(wv, x++, avg/samples_per_pixel);
+				sample_draw(wv, x++, val, color[buf_cnt]);
 				// TODO: scale y, draw line from last
 				avg=0;
 			}
@@ -119,41 +125,66 @@ void event_loop(wview_t *wv) {
 }
 
 int main(int argc, char **argv) {
-	samplebuf_t sbuf;
+	samplebuf_t sbuf[2];
 	wview_t wview;
-	mf_t mf;
+	mf_t mf[2];
 	
 	assert(argc>1);
-	assert(!(map_file(&mf, argv[1], 0, 0)));
+	assert(!(map_file(mf, argv[1], 0, 0)));
 	
-	wview.sbuf = &sbuf;
+	// 1 channel for now
+	wview.sbuf = sbuf;
 	wview.sbuf_cnt = 1;
 	
-	sbuf.y_ofs = 100;
-	sbuf.min_val = 0;
-	sbuf.max_val = 255;
-	sbuf.dtype = UINT8;
-	sbuf.d = mf.ptr + 164;
+	if(argc>2) {
+		if(!((map_file(mf+1, argv[2], 0, 0))))
+			wview.sbuf_cnt=2;
+	}
 	
-	wview.samples = mf.len - 164;
+	sbuf[0].y_ofs = 256; // channel y offset
+	sbuf[1].y_ofs = 512; // channel y offset
 	
+	// channel min/max
+	sbuf[0].min_val = 0;
+	sbuf[0].max_val = 255;
+	
+	// channel min/max
+	sbuf[1].min_val = 0;
+	sbuf[1].max_val = 255;
+	
+	// uint8
+	sbuf[0].dtype = UINT8;
+	sbuf[0].d = mf[0].ptr + 164;
+	
+	// uint8
+	sbuf[1].dtype = UINT8;
+	sbuf[1].d = mf[1].ptr + 164;
+	
+	wview.samples = mf[0].len - 164;
+	
+	// x zoom: min (show all samples)
 	wview.x_pos = 0;
-	wview.y_pos = 0;
 	wview.x_cnt = wview.samples;
-	wview.y_cnt = 100; // ?????
 	
+	// TODO: y zoom: min (show all)
+	//wview.y_pos = 0;
+	//wview.y_cnt = sbuf.max_val + 1;
+	
+	// main window
 	wview.target_w = 1000;
-	wview.target_h = 100; // ????
+	wview.target_h = 768;
 	
 	printf("%ld samples, target_w %ld\n",wview.samples,wview.target_w);
 	
-	sdl_init(wview.target_w,768);
+	sdl_init(wview.target_w, wview.target_h);
 	
 	wview_redraw(&wview);
 	
 	event_loop(&wview);
 	
-	unmap_file(&mf);
+	unmap_file(mf);
+	if(wview.sbuf_cnt==2)
+		unmap_file(mf+1);
 	
 	sdl_destroy();
 	
