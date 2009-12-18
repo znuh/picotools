@@ -3,6 +3,7 @@
 #include "wview.h"
 #include "mmap.h"
 #include "sdl_display.h"
+#include "scrollbar.h"
 
 float samplebuf_get_sample(samplebuf_t *s, unsigned long sample) {
 	void *d = s->d;
@@ -56,6 +57,8 @@ void sample_draw(wview_t *wv, int x, float y, uint32_t color) {
 	//pixelColor(sdl.screen, x, 256-y, 0xffffffff);
 }
 
+scrollbar_t *sb;
+
 void wview_redraw(wview_t *wv) {
 	uint32_t color[] = {0x8080ffff, 0xff8080ff};
 	float x_zoom = (float)wv->target_w / (float)wv->x_cnt;
@@ -93,6 +96,7 @@ void wview_redraw(wview_t *wv) {
 			}
 		}
 	}
+	scrollbar_draw(sb);
 	sdl_flip();
 }
 
@@ -178,6 +182,8 @@ int main(int argc, char **argv) {
 	
 	sdl_init(wview.target_w, wview.target_h);
 	
+	assert((sb = scrollbar_create(sdl.screen, 0, wview.target_h-12, wview.target_w, 12, wview.samples)));
+	
 	wview_redraw(&wview);
 	
 	event_loop(&wview);
@@ -185,6 +191,8 @@ int main(int argc, char **argv) {
 	unmap_file(mf);
 	if(wview.sbuf_cnt==2)
 		unmap_file(mf+1);
+	
+	scrollbar_destroy(sb);
 	
 	sdl_destroy();
 	
