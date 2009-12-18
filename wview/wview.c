@@ -104,11 +104,15 @@ void wview_redraw(wview_t *wv) {
 	
 //}
 
-void event_loop(wview_t *wv) {
+void event_loop(wview_t *wv, scrollbar_t *sb) {
 	while(1) {
 		SDL_Event event;
 		
 		SDL_WaitEvent(&event);
+		
+		if((event.type == SDL_MOUSEMOTION) || (event.type == SDL_MOUSEBUTTONDOWN) || (event.type == SDL_MOUSEBUTTONUP)) {
+			scrollbar_event(sb, &event);
+		}
 		
 		switch(event.type) {
 			case SDL_MOUSEMOTION:
@@ -176,7 +180,7 @@ int main(int argc, char **argv) {
 	
 	// main window
 	wview.target_w = 1000;
-	wview.target_h = 768;
+	wview.target_h = 600;
 	
 	printf("%ld samples, target_w %ld\n",wview.samples,wview.target_w);
 	
@@ -186,7 +190,7 @@ int main(int argc, char **argv) {
 	
 	wview_redraw(&wview);
 	
-	event_loop(&wview);
+	event_loop(&wview, sb);
 	
 	unmap_file(mf);
 	if(wview.sbuf_cnt==2)

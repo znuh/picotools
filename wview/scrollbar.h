@@ -3,6 +3,13 @@
 
 #include "sdl_display.h"
 
+typedef enum MouseMode {
+	SB_OUT,
+	SB_START,
+	SB_POS,
+	SB_END
+} sb_MouseMode;
+
 typedef struct scrollbar_s {
 	/* surface stuff */
 	SDL_Surface *dst;
@@ -11,11 +18,15 @@ typedef struct scrollbar_s {
 	int sf_w;
 	int sf_h;
 	
+	/* mouse handling */
+	sb_MouseMode mouse_mode;
+	int mouse_ofs;
+	
 	/* params */
 	unsigned long max_len;
 	
 	/* user modifyable params */
-	unsigned long pos;
+	int pos;
 	unsigned long len;
 } scrollbar_t;
 
