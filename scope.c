@@ -152,3 +152,73 @@ void scope_stop(void) {
 		return;
 	ps5000Stop(handle);
 }
+
+int scope_trigger_config(void) {
+	PICO_STATUS res = PICO_OK;
+	
+	if(scope_config.changed & SCOPE_CHANGED_TRIG_PROP) {
+		// depends on channel & voltage
+		scope_config.trig_prop.channel = scope_config.trig_ch;
+		scope_config.trig_prop.thresholdMode = LEVEL;
+		scope_config.trig_prop.hysteresis = 0;
+		scope_config.trig_prop.thresholdMinor = scope_config.trig_level;
+		scope_config.trig_prop.thresholdMajor = scope_config.trig_level;
+		res = ps5000SetTriggerChannelProperties(handle, &(scope_config.trig_prop), (scope_config.trig_enabled ? 1 : 0), 1, 0);
+		if (res != PICO_OK)
+			goto error;
+	}
+	
+	if(scope_config.changed & SCOPE_CHANGED_TRIG_COND) {
+		// depends on channel
+		
+		// defaults
+		scope_config.trig_cond.channelA = CONDITION_DONT_CARE;
+		scope_config.trig_cond.channelB = CONDITION_DONT_CARE;
+		scope_config.trig_cond.channelC = CONDITION_DONT_CARE;
+		scope_config.trig_cond.channelD = CONDITION_DONT_CARE;
+		scope_config.trig_cond.external = CONDITION_DONT_CARE;
+		scope_config.trig_cond.aux = CONDITION_DONT_CARE;
+		scope_config.trig_cond.pulseWidthQualifier = CONDITION_DONT_CARE;
+		
+		if(scope_config.trig_ch == PS5000_CHANNEL_A)
+			scope_config.trig_cond.channelA = CONDITION_TRUE;
+		else if(scope_config.trig_ch == PS5000_CHANNEL_B)
+			scope_config.trig_cond.channelB = CONDITION_TRUE;
+		else if(scope_config.trig_ch == PS5000_EXTERNAL)
+			scope_config.trig_cond.external = CONDITION_TRUE;
+		
+		res = ps5000SetTriggerChannelConditions(handle, &(scope_config.trig_cond), (scope_config.trig_enabled ? 1 : 0));
+		if (res != PICO_OK)
+			goto error;
+	}
+	
+	if(scope_config.changed & SCOPE_CHANGED_TRIG_DIR) {
+		THRESHOLD_DIRECTION dir[6] = {NONE, NONE, NONE, NONE, NONE, NONE};
+		
+		if(scope_config.trig_ch == PS5000_CHANNEL_A)
+			dir[0] = scope_config.trig_dir;
+		else if(scope_config.trig_ch == PS5000_CHANNEL_B)
+			dir[1] = scope_config.trig_dir;
+		else if(scope_config.trig_ch == PS5000_EXTERNAL)
+			dir[4] = scope_config.trig_dir;
+		
+		res = ps5000SetTriggerChannelDirections(handle, dir[0], dir[1], dir[2], dir[3], dir[4], dir[5]);
+		if (res != PICO_OK)
+			goto error;
+	}
+	
+	if(scope_config.changed & SCOPE_CHANGED_TRIG_OFS) {
+		res = ps5000SetTriggerDelay(handle, scope_config.trig_ofs);
+		if (res != PICO_OK)
+			goto error;
+	}
+	
+	scope_config.changed &= ~(SCOPE_CHANGED_TRIG_PROP | SCOPE_CHANGED_TRIG_DIR | SCOPE_CHANGED_TRIG_DIR | SCOPE_CHANGED_TRIG_OFS);
+	
+	printf("trigger cfg fine\n");
+	return res;	
+	
+error:
+	printf("trigger cfg error\n");
+	return res;
+}

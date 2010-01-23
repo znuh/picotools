@@ -18,6 +18,15 @@
 
 #include <libps5000-1.3/ps5000Api.h>
 
+#define SCOPE_CHANGED_CH1		(1<<0)
+#define SCOPE_CHANGED_CH2		(1<<1)
+#define SCOPE_CHANGED_SAMPLES	(1<<2)
+#define SCOPE_CHANGED_TIMEBASE	(1<<3)
+#define SCOPE_CHANGED_TRIG_COND	(1<<4)
+#define SCOPE_CHANGED_TRIG_DIR		(1<<5)
+#define SCOPE_CHANGED_TRIG_PROP	(1<<6)
+#define SCOPE_CHANGED_TRIG_OFS	(1<<7)
+
 typedef struct scope_config_s {
 	
 	// channels
@@ -66,5 +75,6 @@ int scope_channel_config(int ch);
 int scope_sample_config(unsigned long *tbase, unsigned long *buflen);
 int scope_run(int single);
 void scope_stop(void);
+int scope_trigger_config(void);
 
 #endif

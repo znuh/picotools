@@ -65,7 +65,7 @@ float srate=0;
 gboolean timeout(gpointer data) {
 	int res =	scope_sample_config(&tbase, &sbuf_len);
 	
-	// TODO
+	// TODO: update GUI / notify user of result
 	scope_config.timebase = tbase;
 	scope_config.samples = sbuf_len;
 	
@@ -153,8 +153,8 @@ void update_trigger_offset() {
 	float pre, post;
 	
 	scaled_val *= scope_config.trig_ofs;
-	scaled_val /= 128000000;
-		
+	scaled_val /= 128000000; // FIXME: where does this come from??
+	
 	post = sbuf_len - scaled_val;
 	pre = sbuf_len - post;
 	
@@ -284,7 +284,9 @@ void on_trig_volt_scale_value_changed(GtkWidget * w, gpointer priv)
 {
 	scope_config.trig_level = gtk_range_get_value(GTK_RANGE(w));	
 	update_trigger_voltage();
-	// TODO: config
+	// SetTriggerChannelProperties
+	scope_config.changed |= SCOPE_CHANGED_TRIG_PROP;
+	scope_trigger_config();
 }
 
 PS5000_CHANNEL trig_channel[] = {
@@ -300,14 +302,20 @@ void on_trig_src_cbox_changed(GtkWidget * w, gpointer priv)
 	if(val)
 		scope_config.trig_ch = trig_channel[val-1];
 	update_trigger_voltage();
-	// TODO: config
+	// SetTriggerChannelConditions (off->null / condition for channel)
+	// SetTriggerChannelDirections (direction for channel)
+	// SetTriggerChannelProperties (properties for channel)
+	scope_config.changed |= SCOPE_CHANGED_TRIG_PROP | SCOPE_CHANGED_TRIG_DIR | SCOPE_CHANGED_TRIG_DIR;
+	scope_trigger_config();
 }
 
 void on_trig_ofs_scale_value_changed(GtkWidget * w, gpointer priv)
 {
 	scope_config.trig_ofs = gtk_range_get_value(GTK_RANGE(w));
 	update_trigger_offset();
-	// TODO: config
+	// SetTriggerDelay
+	scope_config.changed |= SCOPE_CHANGED_TRIG_OFS;
+	scope_trigger_config();
 }
 
 THRESHOLD_DIRECTION edge[] = {
@@ -320,5 +328,7 @@ void on_trig_edge_cbox_changed(GtkWidget * w, gpointer priv)
 {
 	int val = gtk_combo_box_get_active(GTK_COMBO_BOX(w));
 	scope_config.trig_dir = edge[val];
-	// TODO: config
+	// SetTriggerChannelDirections
+	scope_config.changed |= SCOPE_CHANGED_TRIG_DIR;
+	scope_trigger_config();
 }
