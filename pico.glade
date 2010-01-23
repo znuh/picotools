@@ -180,7 +180,7 @@ DC</property>
       <child>
 	<widget class="GtkLabel" id="samples_lbl">
 	  <property name="visible">True</property>
-	  <property name="label" translatable="yes">samples * 1000</property>
+	  <property name="label" translatable="yes">samples</property>
 	  <property name="use_underline">False</property>
 	  <property name="use_markup">False</property>
 	  <property name="justify">GTK_JUSTIFY_LEFT</property>
@@ -211,7 +211,7 @@ DC</property>
 	  <property name="digits">0</property>
 	  <property name="update_policy">GTK_UPDATE_CONTINUOUS</property>
 	  <property name="inverted">False</property>
-	  <property name="adjustment">1 1 128000 1000 1000 0</property>
+	  <property name="adjustment">0 0 15 1 1 0</property>
 	  <signal name="value_changed" handler="on_samples_scale_value_changed" last_modification_time="Sat, 19 Sep 2009 14:18:27 GMT"/>
 	</widget>
 	<packing>
