@@ -83,6 +83,8 @@ void PREF4 CallBackBlock(
 	int cnt;
 	short *d1=NULL, *d2=NULL;
 
+	printf("done\n");
+	
 	// notify gui (gui will call scope_stop)
 	// TODO: my feelings tell me there could be some threading issues?
 	single_done();	
@@ -136,11 +138,18 @@ void PREF4 CallBackBlock(
 
 int scope_run(int single) {
 	PICO_STATUS res;
+	unsigned long pre = scope_config.pre_trig, post = scope_config.post_trig;
 	
 	if(!initialized)
 		return 0;
 	
-	res = ps5000RunBlock(handle, 0, scope_config.samples, scope_config.timebase, 0, NULL, 0, CallBackBlock, NULL);
+	if(!(scope_config.trig_enabled)) {
+		post+=pre;
+		pre=0;
+	}
+	
+	printf("%ld %ld\n",pre, post);
+	res = ps5000RunBlock(handle, pre, post, scope_config.timebase, 0, NULL, 0, CallBackBlock, NULL);
 	
 	printf("run: %ld (%s)\n",res,(res == PICO_OK) ? "ok" : "FAIL");
 	
@@ -155,6 +164,9 @@ void scope_stop(void) {
 
 int scope_trigger_config(void) {
 	PICO_STATUS res = PICO_OK;
+
+	if(!initialized)
+		return res;
 	
 	if(scope_config.changed & SCOPE_CHANGED_TRIG_PROP) {
 		// depends on channel & voltage
@@ -164,13 +176,15 @@ int scope_trigger_config(void) {
 		scope_config.trig_prop.thresholdMinor = scope_config.trig_level;
 		scope_config.trig_prop.thresholdMajor = scope_config.trig_level;
 		res = ps5000SetTriggerChannelProperties(handle, &(scope_config.trig_prop), (scope_config.trig_enabled ? 1 : 0), 1, 0);
-		if (res != PICO_OK)
+		if (res != PICO_OK) {
+			printf("SetTriggerChannelProperties: %ld\n",res);
 			goto error;
+		}
 	}
 	
 	if(scope_config.changed & SCOPE_CHANGED_TRIG_COND) {
 		// depends on channel
-		
+				
 		// defaults
 		scope_config.trig_cond.channelA = CONDITION_DONT_CARE;
 		scope_config.trig_cond.channelB = CONDITION_DONT_CARE;
@@ -186,14 +200,21 @@ int scope_trigger_config(void) {
 			scope_config.trig_cond.channelB = CONDITION_TRUE;
 		else if(scope_config.trig_ch == PS5000_EXTERNAL)
 			scope_config.trig_cond.external = CONDITION_TRUE;
+		else if(scope_config.trig_enabled) {
+			printf("IARGH!?!?!\n");
+		}
 		
 		res = ps5000SetTriggerChannelConditions(handle, &(scope_config.trig_cond), (scope_config.trig_enabled ? 1 : 0));
-		if (res != PICO_OK)
+		if (res != PICO_OK) {
+			printf("SetTriggerChannelConditions: %ld\n",res);
 			goto error;
+		}
 	}
 	
 	if(scope_config.changed & SCOPE_CHANGED_TRIG_DIR) {
 		THRESHOLD_DIRECTION dir[6] = {NONE, NONE, NONE, NONE, NONE, NONE};
+		
+		//printf("ch %d edge %d\n",scope_config.trig_ch, scope_config.trig_dir);
 		
 		if(scope_config.trig_ch == PS5000_CHANNEL_A)
 			dir[0] = scope_config.trig_dir;
@@ -201,21 +222,20 @@ int scope_trigger_config(void) {
 			dir[1] = scope_config.trig_dir;
 		else if(scope_config.trig_ch == PS5000_EXTERNAL)
 			dir[4] = scope_config.trig_dir;
+		else if(scope_config.trig_enabled) {
+			printf("IARGH!?!?!\n");
+		}
 		
 		res = ps5000SetTriggerChannelDirections(handle, dir[0], dir[1], dir[2], dir[3], dir[4], dir[5]);
-		if (res != PICO_OK)
+		if (res != PICO_OK) {
+			printf("SetTriggerChannelDirections: %ld\n",res);
 			goto error;
+		}
 	}
+		
+	scope_config.changed &= ~(SCOPE_CHANGED_TRIG_PROP | SCOPE_CHANGED_TRIG_DIR | SCOPE_CHANGED_TRIG_DIR);
 	
-	if(scope_config.changed & SCOPE_CHANGED_TRIG_OFS) {
-		res = ps5000SetTriggerDelay(handle, scope_config.trig_ofs);
-		if (res != PICO_OK)
-			goto error;
-	}
-	
-	scope_config.changed &= ~(SCOPE_CHANGED_TRIG_PROP | SCOPE_CHANGED_TRIG_DIR | SCOPE_CHANGED_TRIG_DIR | SCOPE_CHANGED_TRIG_OFS);
-	
-	printf("trigger cfg fine\n");
+	printf("trigger cfg fine???\n");
 	return res;	
 	
 error:

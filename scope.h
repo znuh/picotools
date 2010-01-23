@@ -55,6 +55,8 @@ typedef struct scope_config_s {
 	
 	// trigger ofs
 	unsigned long trig_ofs;
+	unsigned long pre_trig;
+	unsigned long post_trig;
 	
 	/*
 		chA

@@ -147,7 +147,7 @@ void update_trigger_voltage(void) {
 	gtk_label_set_text(trig_volt_lbl, buf);
 }
 
-void update_trigger_offset() {
+void update_trigger_offset(void) {
 	char buf[64], tbuf[64];
 	unsigned long long scaled_val = sbuf_len;
 	float pre, post;
@@ -157,6 +157,9 @@ void update_trigger_offset() {
 	
 	post = sbuf_len - scaled_val;
 	pre = sbuf_len - post;
+	
+	scope_config.pre_trig = pre;
+	scope_config.post_trig = post;
 	
 	format_time(tbuf,pre*ns);
 	if(pre > 1000000)
@@ -311,11 +314,11 @@ void on_trig_src_cbox_changed(GtkWidget * w, gpointer priv)
 
 void on_trig_ofs_scale_value_changed(GtkWidget * w, gpointer priv)
 {
-	scope_config.trig_ofs = gtk_range_get_value(GTK_RANGE(w));
+	scope_config.trig_ofs =gtk_range_get_value(GTK_RANGE(w));
 	update_trigger_offset();
 	// SetTriggerDelay
-	scope_config.changed |= SCOPE_CHANGED_TRIG_OFS;
-	scope_trigger_config();
+	//scope_config.changed |= SCOPE_CHANGED_TRIG_OFS;
+	//scope_trigger_config();
 }
 
 THRESHOLD_DIRECTION edge[] = {

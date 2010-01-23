@@ -1,3 +1,6 @@
 - triggering
 - waveform display
+	- use cairo
+	- print/PDF output support
+	- GL/SDL/GTK backend?
 - initial values for GUI, log. scales, etc. (fancy stuff)
