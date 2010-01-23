@@ -308,7 +308,7 @@ void on_trig_src_cbox_changed(GtkWidget * w, gpointer priv)
 	// SetTriggerChannelConditions (off->null / condition for channel)
 	// SetTriggerChannelDirections (direction for channel)
 	// SetTriggerChannelProperties (properties for channel)
-	scope_config.changed |= SCOPE_CHANGED_TRIG_PROP | SCOPE_CHANGED_TRIG_DIR | SCOPE_CHANGED_TRIG_DIR;
+	scope_config.changed |= SCOPE_CHANGED_TRIG_COND | SCOPE_CHANGED_TRIG_DIR | SCOPE_CHANGED_TRIG_PROP;
 	scope_trigger_config();
 }
 

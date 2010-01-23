@@ -235,7 +235,7 @@ int scope_trigger_config(void) {
 		
 	scope_config.changed &= ~(SCOPE_CHANGED_TRIG_PROP | SCOPE_CHANGED_TRIG_DIR | SCOPE_CHANGED_TRIG_DIR);
 	
-	printf("trigger cfg fine???\n");
+	//printf("trigger cfg fine???\n");
 	return res;	
 	
 error:
