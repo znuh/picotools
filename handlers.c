@@ -159,11 +159,17 @@ void update_trigger_offset() {
 	pre = sbuf_len - post;
 	
 	format_time(tbuf,pre*ns);
-	sprintf(buf,"pre  %.3fMS (%s)",pre/1000000,tbuf);
+	if(pre > 1000000)
+		sprintf(buf,"pre  %.3fMS (%s)",pre/1000000,tbuf);
+	else
+		sprintf(buf,"pre  %.3fkS (%s)",pre/1000,tbuf);
 	gtk_label_set_text(trig_pre_lbl,buf);
 	
 	format_time(tbuf,post*ns);
-	sprintf(buf,"post %.3fMS (%s)",post/1000000,tbuf);
+	if(post > 1000000)
+		sprintf(buf,"post %.3fMS (%s)",post/1000000,tbuf);
+	else
+		sprintf(buf,"post %.3fkS (%s)",post/1000,tbuf);
 	gtk_label_set_text(trig_post_lbl,buf);
 }
 
@@ -243,7 +249,7 @@ void on_samples_scale_value_changed(GtkWidget * w, gpointer priv)
 	char buf[64];
 	sbuf_len = 1<<((int)gtk_range_get_value(GTK_RANGE(w))+12);
 	if(sbuf_len < 1000000)
-		sprintf(buf,"%.3f Ksamples",((float)sbuf_len)/1000);
+		sprintf(buf,"%.3f ksamples",((float)sbuf_len)/1000);
 	else
 		sprintf(buf,"%.3f Msamples",((float)sbuf_len)/1024000);
 	gtk_label_set_text(samples_lbl,buf);
