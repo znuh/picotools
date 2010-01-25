@@ -211,7 +211,7 @@ DC</property>
 	  <property name="digits">0</property>
 	  <property name="update_policy">GTK_UPDATE_CONTINUOUS</property>
 	  <property name="inverted">False</property>
-	  <property name="adjustment">0 0 15 1 1 0</property>
+	  <property name="adjustment">0 0 240 1 1 0</property>
 	  <signal name="value_changed" handler="on_samples_scale_value_changed" last_modification_time="Sat, 19 Sep 2009 14:18:27 GMT"/>
 	</widget>
 	<packing>

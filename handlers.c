@@ -250,7 +250,11 @@ void update_time(void) {
 void on_samples_scale_value_changed(GtkWidget * w, gpointer priv)
 {
 	char buf[64];
-	sbuf_len = 1<<((int)gtk_range_get_value(GTK_RANGE(w))+12);
+	int shift = ((int)gtk_range_get_value(GTK_RANGE(w))>>4)+12;
+	int remainder = (int)gtk_range_get_value(GTK_RANGE(w))&0xf;
+	
+	sbuf_len = (1<<shift) | (remainder << (shift - 4));
+	//printf("%lx\n",sbuf_len);
 	if(sbuf_len < 1000000)
 		sprintf(buf,"%.3f ksamples",((float)sbuf_len)/1000);
 	else
