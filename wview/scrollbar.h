@@ -33,16 +33,18 @@ typedef struct scrollbar_s {
 	int grip_end;
 
 	/* params */
+	unsigned long min_len;
 	unsigned long max_len;
 
 	/* user modifyable params */
-	int pos;
-	int len;
+	float pos;
+	float len;
 
 } scrollbar_t;
 
 scrollbar_t *scrollbar_create(SDL_Surface * sf, int sf_xofs, int sf_yofs,
-			      int sf_w, int sf_h, unsigned long max_len);
+			      int sf_w, int sf_h, unsigned long min_len,
+			      unsigned long max_len);
 
 void scrollbar_destroy(scrollbar_t * sb);
 

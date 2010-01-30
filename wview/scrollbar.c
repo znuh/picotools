@@ -1,27 +1,40 @@
 #include "scrollbar.h"
+#include <assert.h>
 
 scrollbar_t *scrollbar_create(SDL_Surface * sf, int sf_xofs, int sf_yofs,
-			      int sf_w, int sf_h, unsigned long max_len)
+			      int sf_w, int sf_h, unsigned long min_len,
+			      unsigned long max_len)
 {
 	scrollbar_t *res = NULL;
+
+	assert(min_len > 0);
+	assert(max_len > min_len);
 
 	if (!(res = malloc(sizeof(scrollbar_t))))
 		return NULL;
 
 	res->dst = sf;
+
+	// widget pos
 	res->sf_xofs = sf_xofs;
 	res->sf_yofs = sf_yofs;
+
+	// widget size
 	res->sf_w = sf_w;
 	res->sf_h = sf_h;
+
+	// params
 	res->max_len = max_len;
+	res->min_len = min_len;
 
-	res->mouse_mode = SB_OUT;
-
+	// initial values
 	res->pos = 0;
 	res->len = max_len;
 
 	res->grip_start = 0;
 	res->grip_end = sf_w - GRIP_SIZE;
+
+	res->mouse_mode = SB_OUT;
 
 	return res;
 }
@@ -55,16 +68,26 @@ void scrollbar_draw(scrollbar_t * sb)
 		 sb->sf_yofs + sb->sf_h, 0x808080ff);
 }
 
-int mouse_in_rect(int mouse_x, int mouse_y, int x, int y, int w, int h,
-		  int *ofs)
+void scrollbar_adjust(scrollbar_t * sb)
 {
-	if ((mouse_x >= x) && (mouse_x <= (x + w)) && (mouse_y >= y)
-	    && (mouse_y <= (y + h))) {
-		if (ofs)
-			*ofs = x - mouse_x;
-		return 1;
-	}
-	return 0;
+	float diff =
+	    sb->grip_end - sb->grip_start - (GRIP_SIZE * 2) - (GRIP_SPACE * 2);
+	float max_diff = sb->sf_w - (GRIP_SIZE * 3) - (GRIP_SPACE * 2);
+	float max_pos = max_diff;
+	float len = (float)(sb->max_len - sb->min_len) * diff;
+	float pos = (float)(sb->max_len - sb->min_len) * sb->grip_start;
+
+	len /= max_diff;
+	len += sb->min_len;
+	sb->len = len;
+
+	//printf("len %f\n",len);
+
+	pos /= max_pos;
+	sb->pos = pos;
+
+	//printf("pos %f\n",pos);
+
 }
 
 void scrollbar_move(scrollbar_t * sb, int x)
@@ -98,7 +121,19 @@ void scrollbar_move(scrollbar_t * sb, int x)
 	default:
 		break;
 	}
-	// TODO: update pos & len
+	scrollbar_adjust(sb);
+}
+
+int mouse_in_rect(int mouse_x, int mouse_y, int x, int y, int w, int h,
+		  int *ofs)
+{
+	if ((mouse_x >= x) && (mouse_x <= (x + w)) && (mouse_y >= y)
+	    && (mouse_y <= (y + h))) {
+		if (ofs)
+			*ofs = x - mouse_x;
+		return 1;
+	}
+	return 0;
 }
 
 void scrollbar_event(scrollbar_t * sb, SDL_Event * evt)

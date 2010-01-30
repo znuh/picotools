@@ -1,6 +1,21 @@
-- triggering
-- waveform display
-	- use cairo
-	- print/PDF output support
-	- GL/SDL/GTK backend?
-- initial values for GUI, log. scales, etc. (fancy stuff)
+0.1:
+    wview:
+	+ scrollbar
+	- live display
+	- 2 channels
+	- grid
+	- better zoom out
+	- time offset
+	- show trigger point
+	
+    GtkUI:
+	- PS5203 suport
+	- initial values
+	- adjust samplebuffer for GS / 2ch.
+	- CSV: fix trigger time=0
+
+0.2:
+    wview:
+	- 2 scrollbars for large buffers
+	- cursors
+	- display more values (time, dV, etc.)

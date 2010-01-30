@@ -127,10 +127,11 @@ void event_loop(wview_t * wv, scrollbar_t * sb)
 			//printf("Mouse moved by %d,%d to (%d,%d)\n", 
 			//              event.motion.xrel, event.motion.yrel,
 			//              event.motion.x, event.motion.y);
-			wv->x_cnt = (wv->samples / sdl.w) * event.motion.x;
+			wv->x_cnt = sb->len;	//(wv->samples / sdl.w) * event.motion.x;
+			wv->x_pos = sb->pos;
 
-			if (wv->x_cnt < sdl.w)
-				wv->x_cnt = sdl.w;
+			//if (wv->x_cnt < sdl.w)
+			//      wv->x_cnt = sdl.w;
 
 			wview_redraw(wv);
 			break;
@@ -197,7 +198,8 @@ int main(int argc, char **argv)
 
 	assert((sb =
 		scrollbar_create(sdl.screen, 0, wview.target_h - 12,
-				 wview.target_w, 12, wview.samples)));
+				 wview.target_w, 12, wview.target_w,
+				 wview.samples)));
 
 	wview_redraw(&wview);
 
