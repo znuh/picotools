@@ -18,8 +18,8 @@
   <property name="gravity">GDK_GRAVITY_NORTH_WEST</property>
   <property name="focus_on_map">True</property>
   <property name="urgency_hint">False</property>
-  <signal name="destroy" handler="gtk_main_quit" last_modification_time="Sat, 19 Sep 2009 14:16:37 GMT"/>
-
+  <signal name="destroy" handler="quit" last_modification_time="Sat, 19 Sep 2009 14:16:37 GMT"/>
+  <signal name="show" handler="init" />
   <child>
     <widget class="GtkVBox" id="vbox1">
       <property name="visible">True</property>

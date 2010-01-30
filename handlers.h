@@ -28,19 +28,19 @@ GtkLabel *time_lbl;
 
 GtkToggleButton *single_btn;
 
-void on_ch1_range_cbox_changed(GtkWidget *w, gpointer priv);
-void on_ch2_btn_toggled(GtkWidget *w, gpointer priv);
-void on_samples_scale_value_changed(GtkWidget *w, gpointer priv);
-void on_trig_volt_scale_value_changed(GtkWidget *w, gpointer priv);
-void on_ch2_cpl_cbox_changed(GtkWidget *w, gpointer priv);
-void on_ch1_btn_toggled(GtkWidget *w, gpointer priv);
-void on_srate_scale_value_changed(GtkWidget *w, gpointer priv);
-void on_ch1_cpl_cbox_changed(GtkWidget *w, gpointer priv);
-void on_trig_src_cbox_changed(GtkWidget *w, gpointer priv);
-void on_trig_ofs_scale_value_changed(GtkWidget *w, gpointer priv);
-void on_trig_edge_cbox_changed(GtkWidget *w, gpointer priv);
-void on_ch2_range_cbox_changed(GtkWidget *w, gpointer priv);
-void on_auto_btn_toggled(GtkWidget *w, gpointer priv);
-void on_single_btn_toggled(GtkWidget *w, gpointer priv);
+void on_ch1_range_cbox_changed(GtkWidget * w, gpointer priv);
+void on_ch2_btn_toggled(GtkWidget * w, gpointer priv);
+void on_samples_scale_value_changed(GtkWidget * w, gpointer priv);
+void on_trig_volt_scale_value_changed(GtkWidget * w, gpointer priv);
+void on_ch2_cpl_cbox_changed(GtkWidget * w, gpointer priv);
+void on_ch1_btn_toggled(GtkWidget * w, gpointer priv);
+void on_srate_scale_value_changed(GtkWidget * w, gpointer priv);
+void on_ch1_cpl_cbox_changed(GtkWidget * w, gpointer priv);
+void on_trig_src_cbox_changed(GtkWidget * w, gpointer priv);
+void on_trig_ofs_scale_value_changed(GtkWidget * w, gpointer priv);
+void on_trig_edge_cbox_changed(GtkWidget * w, gpointer priv);
+void on_ch2_range_cbox_changed(GtkWidget * w, gpointer priv);
+void on_auto_btn_toggled(GtkWidget * w, gpointer priv);
+void on_single_btn_toggled(GtkWidget * w, gpointer priv);
 
 #endif

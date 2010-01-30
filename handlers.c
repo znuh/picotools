@@ -14,6 +14,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 #include <gtk/gtk.h>
+#include <glade/glade.h>
 #include "scope.h"
 
 GtkLabel *samples_lbl;
@@ -25,61 +26,68 @@ GtkLabel *time_lbl;
 
 GtkToggleButton *single_btn;
 
-guint reconf_timer=-1;
-int reconf_timer_active=0;
+guint reconf_timer = -1;
+int reconf_timer_active = 0;
 
 extern scope_config_t scope_config;
+extern SCOPE_TYPE_t scope_type;
 
-void format_time(char *buf, float time_ns) {
-	char mult='n';
-	
-	if(time_ns>1000) {
-		time_ns/=1000;
-		mult='u';
+extern GladeXML *glade;
+
+void format_time(char *buf, float time_ns)
+{
+	char mult = 'n';
+
+	if (time_ns > 1000) {
+		time_ns /= 1000;
+		mult = 'u';
 	}
-	if(time_ns>1000) {
-		time_ns/=1000;
-		mult='m';
+	if (time_ns > 1000) {
+		time_ns /= 1000;
+		mult = 'm';
 	}
-	if(time_ns>1000) {
-		time_ns/=1000;
-		mult=' ';
+	if (time_ns > 1000) {
+		time_ns /= 1000;
+		mult = ' ';
 	}
-	if(mult != ' ')
-		sprintf(buf,"%.3f %cs",time_ns,mult);
+	if (mult != ' ')
+		sprintf(buf, "%.3f %cs", time_ns, mult);
 	else
-		sprintf(buf,"%.3f s",time_ns);
+		sprintf(buf, "%.3f s", time_ns);
 }
 
-void single_done(void) {
-	gtk_toggle_button_set_active(single_btn,0);
+void single_done(void)
+{
+	gtk_toggle_button_set_active(single_btn, 0);
 }
 
 /***************** srate/buf reconf timer **************************/
 
-unsigned long sbuf_len=0;
-unsigned long tbase=0;
-unsigned long ns=0;
-float srate=0;
+unsigned long sbuf_len = 0;
+unsigned long tbase = 0;
+unsigned long ns = 0;
+float srate = 0;
 
-gboolean timeout(gpointer data) {
-	int res =	scope_sample_config(&tbase, &sbuf_len);
-	
+gboolean timeout(gpointer data)
+{
+	int res = scope_sample_config(&tbase, &sbuf_len);
+
 	// TODO: update GUI / notify user of result
 	scope_config.timebase = tbase;
 	scope_config.samples = sbuf_len;
-	
-	printf("%d: timebase %ld buf_len %ld\n",res,tbase,sbuf_len);
-	
-	reconf_timer_active=0;
+
+	printf("%d: timebase %ld buf_len %ld\n", res, tbase, sbuf_len);
+
+	reconf_timer_active = 0;
 	return FALSE;
 }
 
-void schedule_reconfig(void) {
-	if(reconf_timer_active)
+void schedule_reconfig(void)
+{
+	if (reconf_timer_active)
 		g_source_remove(reconf_timer);
-	reconf_timer=g_timeout_add(100,timeout,NULL);
-	reconf_timer_active=1;
+	reconf_timer = g_timeout_add(100, timeout, NULL);
+	reconf_timer_active = 1;
 }
 
 /***************** action buttons **************************/
@@ -88,8 +96,8 @@ void on_single_btn_toggled(GtkWidget * w, gpointer priv)
 {
 	int val = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(w));
 	int res;
-	
-	if(val)
+
+	if (val)
 		res = scope_run(1);
 	else
 		scope_stop();
@@ -99,25 +107,25 @@ void on_auto_btn_toggled(GtkWidget * w, gpointer priv)
 {
 	// ignore auto mode while dumping to textfiles... (bad idea)
 	/*
-	int val = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(w));
-	int res;
- 
-	if(val)
-		res = scope_run(0);
-	*/
+	   int val = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(w));
+	   int res;
+
+	   if(val)
+	   res = scope_run(0);
+	 */
 }
 
 /***************** channel config **************************/
 
 PS5000_RANGE scope_range[] = {
 	PS5000_100MV,
-        PS5000_200MV,
-        PS5000_500MV,
-        PS5000_1V,
-        PS5000_2V,
-        PS5000_5V,
-        PS5000_10V,
-        PS5000_20V
+	PS5000_200MV,
+	PS5000_500MV,
+	PS5000_1V,
+	PS5000_2V,
+	PS5000_5V,
+	PS5000_10V,
+	PS5000_20V
 };
 
 float f_scope_range[] = {
@@ -131,49 +139,51 @@ float f_scope_range[] = {
 	20
 };
 
-void update_trigger_voltage(void) {
+void update_trigger_voltage(void)
+{
 	char buf[64];
-	float level, range = 20.0; // ext
-	
-	if(scope_config.trig_ch == PS5000_CHANNEL_A)
+	float level, range = 20.0;	// ext
+
+	if (scope_config.trig_ch == PS5000_CHANNEL_A)
 		range = scope_config.f_range[0];
-	
-	else if(scope_config.trig_ch == PS5000_CHANNEL_B)
+
+	else if (scope_config.trig_ch == PS5000_CHANNEL_B)
 		range = scope_config.f_range[1];
-	
+
 	level = (range * scope_config.trig_level) / PS5000_MAX_VALUE;
-	
-	sprintf(buf,"threshold: %.6fV",level);
+
+	sprintf(buf, "threshold: %.6fV", level);
 	gtk_label_set_text(trig_volt_lbl, buf);
 }
 
-void update_trigger_offset(void) {
+void update_trigger_offset(void)
+{
 	char buf[64], tbuf[64];
 	unsigned long long scaled_val = sbuf_len;
 	float pre, post;
-	
+
 	scaled_val *= scope_config.trig_ofs;
-	scaled_val /= 128000000; // FIXME: where does this come from??
-	
+	scaled_val /= 128000000;	// FIXME: where does this come from??
+
 	post = sbuf_len - scaled_val;
 	pre = sbuf_len - post;
-	
+
 	scope_config.pre_trig = pre;
 	scope_config.post_trig = post;
-	
-	format_time(tbuf,pre*ns);
-	if(pre > 1000000)
-		sprintf(buf,"pre  %.3fMS (%s)",pre/1000000,tbuf);
+
+	format_time(tbuf, pre * ns);
+	if (pre > 1000000)
+		sprintf(buf, "pre  %.3fMS (%s)", pre / 1000000, tbuf);
 	else
-		sprintf(buf,"pre  %.3fkS (%s)",pre/1000,tbuf);
-	gtk_label_set_text(trig_pre_lbl,buf);
-	
-	format_time(tbuf,post*ns);
-	if(post > 1000000)
-		sprintf(buf,"post %.3fMS (%s)",post/1000000,tbuf);
+		sprintf(buf, "pre  %.3fkS (%s)", pre / 1000, tbuf);
+	gtk_label_set_text(trig_pre_lbl, buf);
+
+	format_time(tbuf, post * ns);
+	if (post > 1000000)
+		sprintf(buf, "post %.3fMS (%s)", post / 1000000, tbuf);
 	else
-		sprintf(buf,"post %.3fkS (%s)",post/1000,tbuf);
-	gtk_label_set_text(trig_post_lbl,buf);
+		sprintf(buf, "post %.3fkS (%s)", post / 1000, tbuf);
+	gtk_label_set_text(trig_post_lbl, buf);
 }
 
 void on_ch1_range_cbox_changed(GtkWidget * w, gpointer priv)
@@ -183,7 +193,7 @@ void on_ch1_range_cbox_changed(GtkWidget * w, gpointer priv)
 	scope_config.range[0] = scope_range[val];
 	scope_config.f_range[0] = f_scope_range[val];
 	scope_channel_config(0);
-	if(scope_config.trig_ch == PS5000_CHANNEL_A)
+	if (scope_config.trig_ch == PS5000_CHANNEL_A)
 		update_trigger_voltage();
 }
 
@@ -194,23 +204,23 @@ void on_ch2_range_cbox_changed(GtkWidget * w, gpointer priv)
 	scope_config.range[1] = scope_range[val];
 	scope_config.f_range[1] = f_scope_range[val];
 	scope_channel_config(1);
-	if(scope_config.trig_ch == PS5000_CHANNEL_B)
+	if (scope_config.trig_ch == PS5000_CHANNEL_B)
 		update_trigger_voltage();
 }
 
 void on_ch1_btn_toggled(GtkWidget * w, gpointer priv)
 {
 	int val = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(w));
-	scope_config.channel_config &= ~(1<<0);
-	scope_config.channel_config |= (val<<0);
+	scope_config.channel_config &= ~(1 << 0);
+	scope_config.channel_config |= (val << 0);
 	scope_channel_config(0);
 }
 
 void on_ch2_btn_toggled(GtkWidget * w, gpointer priv)
 {
 	int val = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(w));
-	scope_config.channel_config &= ~(1<<1);
-	scope_config.channel_config |= (val<<1);
+	scope_config.channel_config &= ~(1 << 1);
+	scope_config.channel_config |= (val << 1);
 	scope_channel_config(1);
 }
 
@@ -218,8 +228,8 @@ void on_ch1_cpl_cbox_changed(GtkWidget * w, gpointer priv)
 {
 	int val = gtk_combo_box_get_active(GTK_COMBO_BOX(w));
 	//printf("%d\n",val);
-	scope_config.channel_config &= ~(1<<2);
-	scope_config.channel_config |= (val<<2);
+	scope_config.channel_config &= ~(1 << 2);
+	scope_config.channel_config |= (val << 2);
 	scope_channel_config(0);
 }
 
@@ -227,39 +237,40 @@ void on_ch2_cpl_cbox_changed(GtkWidget * w, gpointer priv)
 {
 	int val = gtk_combo_box_get_active(GTK_COMBO_BOX(w));
 	//printf("%d\n",val);
-	scope_config.channel_config &= ~(1<<3);
-	scope_config.channel_config |= (val<<3);
+	scope_config.channel_config &= ~(1 << 3);
+	scope_config.channel_config |= (val << 3);
 	scope_channel_config(1);
 }
 
 /***************** srate/buffer config **************************/
 
-void update_time(void) {
+void update_time(void)
+{
 	char buf[64], tbuf[64];
 	float stime = ns;
-	
-	if((ns == 0) || (sbuf_len == 0))
+
+	if ((ns == 0) || (sbuf_len == 0))
 		return;
-	
-	format_time(tbuf,stime * sbuf_len);
-	
-	sprintf(buf,"time: %s",tbuf);
-	gtk_label_set_text(time_lbl,buf);
+
+	format_time(tbuf, stime * sbuf_len);
+
+	sprintf(buf, "time: %s", tbuf);
+	gtk_label_set_text(time_lbl, buf);
 }
 
 void on_samples_scale_value_changed(GtkWidget * w, gpointer priv)
 {
 	char buf[64];
-	int shift = ((int)gtk_range_get_value(GTK_RANGE(w))>>4)+12;
-	int remainder = (int)gtk_range_get_value(GTK_RANGE(w))&0xf;
-	
-	sbuf_len = (1<<shift) | (remainder << (shift - 4));
+	int shift = ((int)gtk_range_get_value(GTK_RANGE(w)) >> 4) + 12;
+	int remainder = (int)gtk_range_get_value(GTK_RANGE(w)) & 0xf;
+
+	sbuf_len = (1 << shift) | (remainder << (shift - 4));
 	//printf("%lx\n",sbuf_len);
-	if(sbuf_len < 1000000)
-		sprintf(buf,"%.3f ksamples",((float)sbuf_len)/1000);
+	if (sbuf_len < 1000000)
+		sprintf(buf, "%.3f ksamples", ((float)sbuf_len) / 1000);
 	else
-		sprintf(buf,"%.3f Msamples",((float)sbuf_len)/1024000);
-	gtk_label_set_text(samples_lbl,buf);
+		sprintf(buf, "%.3f Msamples", ((float)sbuf_len) / 1024000);
+	gtk_label_set_text(samples_lbl, buf);
 	update_time();
 	update_trigger_offset();
 	schedule_reconfig();
@@ -268,18 +279,17 @@ void on_samples_scale_value_changed(GtkWidget * w, gpointer priv)
 void on_srate_scale_value_changed(GtkWidget * w, gpointer priv)
 {
 	char buf[64];
-	tbase = 100-gtk_range_get_value(GTK_RANGE(w))/10000;
-	
-	if(tbase <= 2) {
-		ns=(1<<tbase);
-	}
-	else {
-		ns=(tbase-2)*8;
+	tbase = 100 - gtk_range_get_value(GTK_RANGE(w)) / 10000;
+
+	if (tbase <= 2) {
+		ns = (1 << tbase);
+	} else {
+		ns = (tbase - 2) * 8;
 	}
 	srate = 1000.0;
-	srate/=ns;
-	sprintf(buf,"srate %.2f MS/s (%ld ns)",srate,ns);
-	gtk_label_set_text(srate_lbl,buf);
+	srate /= ns;
+	sprintf(buf, "srate %.2f MS/s (%ld ns)", srate, ns);
+	gtk_label_set_text(srate_lbl, buf);
 	update_time();
 	update_trigger_offset();
 	schedule_reconfig();
@@ -289,7 +299,7 @@ void on_srate_scale_value_changed(GtkWidget * w, gpointer priv)
 
 void on_trig_volt_scale_value_changed(GtkWidget * w, gpointer priv)
 {
-	scope_config.trig_level = gtk_range_get_value(GTK_RANGE(w));	
+	scope_config.trig_level = gtk_range_get_value(GTK_RANGE(w));
 	update_trigger_voltage();
 	// SetTriggerChannelProperties
 	scope_config.changed |= SCOPE_CHANGED_TRIG_PROP;
@@ -306,19 +316,21 @@ void on_trig_src_cbox_changed(GtkWidget * w, gpointer priv)
 {
 	int val = gtk_combo_box_get_active(GTK_COMBO_BOX(w));
 	scope_config.trig_enabled = val;
-	if(val)
-		scope_config.trig_ch = trig_channel[val-1];
+	if (val)
+		scope_config.trig_ch = trig_channel[val - 1];
 	update_trigger_voltage();
 	// SetTriggerChannelConditions (off->null / condition for channel)
 	// SetTriggerChannelDirections (direction for channel)
 	// SetTriggerChannelProperties (properties for channel)
-	scope_config.changed |= SCOPE_CHANGED_TRIG_COND | SCOPE_CHANGED_TRIG_DIR | SCOPE_CHANGED_TRIG_PROP;
+	scope_config.changed |=
+	    SCOPE_CHANGED_TRIG_COND | SCOPE_CHANGED_TRIG_DIR |
+	    SCOPE_CHANGED_TRIG_PROP;
 	scope_trigger_config();
 }
 
 void on_trig_ofs_scale_value_changed(GtkWidget * w, gpointer priv)
 {
-	scope_config.trig_ofs =gtk_range_get_value(GTK_RANGE(w));
+	scope_config.trig_ofs = gtk_range_get_value(GTK_RANGE(w));
 	update_trigger_offset();
 	// SetTriggerDelay
 	//scope_config.changed |= SCOPE_CHANGED_TRIG_OFS;
@@ -338,4 +350,15 @@ void on_trig_edge_cbox_changed(GtkWidget * w, gpointer priv)
 	// SetTriggerChannelDirections
 	scope_config.changed |= SCOPE_CHANGED_TRIG_DIR;
 	scope_trigger_config();
+}
+
+void init(GtkWidget * widget, gpointer user_data)
+{
+	// TODO: display initial values
+}
+
+void quit(GtkObject * object, gpointer user_data)
+{
+	scope_close();
+	gtk_main_quit();
 }

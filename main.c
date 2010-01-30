@@ -21,8 +21,10 @@
 #include "scope.h"
 
 GladeXML *glade;
+extern SCOPE_TYPE_t scope_type;
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+{
 
 	gtk_init(&argc, &argv);
 	glade_init();
@@ -30,23 +32,41 @@ int main(int argc, char **argv) {
 	assert((glade = glade_xml_new("pico.glade", NULL, NULL)));
 	glade_xml_signal_autoconnect(glade);
 
-	assert((samples_lbl = GTK_LABEL(glade_xml_get_widget(glade, "samples_lbl"))));
-	assert((srate_lbl = GTK_LABEL(glade_xml_get_widget(glade, "srate_lbl"))));
+	assert((samples_lbl =
+		GTK_LABEL(glade_xml_get_widget(glade, "samples_lbl"))));
+	assert((srate_lbl =
+		GTK_LABEL(glade_xml_get_widget(glade, "srate_lbl"))));
 	assert((time_lbl = GTK_LABEL(glade_xml_get_widget(glade, "time_lbl"))));
-	assert((trig_volt_lbl = GTK_LABEL(glade_xml_get_widget(glade, "trig_volt_lbl"))));
-	assert((trig_pre_lbl = GTK_LABEL(glade_xml_get_widget(glade, "trig_pre_lbl"))));
-	assert((trig_post_lbl = GTK_LABEL(glade_xml_get_widget(glade, "trig_post_lbl"))));
-	assert((single_btn = GTK_TOGGLE_BUTTON(glade_xml_get_widget(glade, "single_btn"))));
-	
-	if(argc>1) {
-		if(!(strcmp(argv[1], "-try")))
-			scope_open();
+	assert((trig_volt_lbl =
+		GTK_LABEL(glade_xml_get_widget(glade, "trig_volt_lbl"))));
+	assert((trig_pre_lbl =
+		GTK_LABEL(glade_xml_get_widget(glade, "trig_pre_lbl"))));
+	assert((trig_post_lbl =
+		GTK_LABEL(glade_xml_get_widget(glade, "trig_post_lbl"))));
+	assert((single_btn =
+		GTK_TOGGLE_BUTTON(glade_xml_get_widget(glade, "single_btn"))));
+
+	if (argc > 1) {
+		if (!(strcmp(argv[1], "-dryrun")))
+			goto skip_open;
 	}
-	
+
+	scope_open();
+
+ skip_open:
+
+	{
+		GtkWindow *w =
+		    GTK_WINDOW(glade_xml_get_widget(glade, "window1"));
+		if (scope_type == SCOPE_PS5204)
+			gtk_window_set_title(w, "pscope - PS5204");
+		else if (scope_type == SCOPE_PS5203)
+			gtk_window_set_title(w, "pscope - PS5203");
+		else
+			gtk_window_set_title(w, "pscope - NONE");
+	}
+
 	gtk_main();
-	
-	scope_close();
-	
+
 	return 0;
 }
-

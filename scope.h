@@ -27,48 +27,54 @@
 #define SCOPE_CHANGED_TRIG_PROP	(1<<6)
 #define SCOPE_CHANGED_TRIG_OFS	(1<<7)
 
+typedef enum {
+	SCOPE_NONE,
+	SCOPE_PS5203 = 5203,
+	SCOPE_PS5204 = 5204
+} SCOPE_TYPE_t;
+
 typedef struct scope_config_s {
-	
+
 	// channels
 	PS5000_RANGE range[2];
 	float f_range[2];
-	uint8_t channel_config; // (AC/DC, enabled) * 2
-	
+	uint8_t channel_config;	// (AC/DC, enabled) * 2
+
 	// number of samples
 	unsigned long samples;
-	
+
 	// timebase (srate)
 	unsigned long timebase;
-	
+
 	PS5000_CHANNEL trig_ch;
 	int trig_enabled;
 	short trig_level;
-	
+
 	// depends on trig. src
 	TRIGGER_CONDITIONS trig_cond;
-	
+
 	// depends on trig. edge
 	THRESHOLD_DIRECTION trig_dir;
-	
+
 	// depends on trig. src + trg. voltage
 	TRIGGER_CHANNEL_PROPERTIES trig_prop;
-	
+
 	// trigger ofs
 	unsigned long trig_ofs;
 	unsigned long pre_trig;
 	unsigned long post_trig;
-	
+
 	/*
-		chA
-		chB
-		number of samples
-		timebase
-		trig_cond
-		trig_dir
-		trig_prop
-		trig_ofs
-	*/
-	unsigned long changed; // TODO
+	   chA
+	   chB
+	   number of samples
+	   timebase
+	   trig_cond
+	   trig_dir
+	   trig_prop
+	   trig_ofs
+	 */
+	unsigned long changed;	// TODO
 } scope_config_t;
 
 int scope_open(void);
