@@ -6,7 +6,7 @@
 
 #include "mmap.h"
 
-int map_file(mf_t *mf, char *file, int ofs, int size)
+int map_file(mf_t * mf, char *file, int ofs, int size)
 {
 	struct stat attr;
 	int fd;
@@ -30,7 +30,6 @@ int map_file(mf_t *mf, char *file, int ofs, int size)
 		close(fd);
 		return -1;
 	}
-	
 	//readahead(fd, ofs, size);
 
 	close(fd);
@@ -41,7 +40,7 @@ int map_file(mf_t *mf, char *file, int ofs, int size)
 	return 0;
 }
 
-void unmap_file(mf_t *mf)
+void unmap_file(mf_t * mf)
 {
 	munmap(mf->mem, mf->real_len);
 	mf->mem = mf->ptr = NULL;

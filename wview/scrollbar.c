@@ -1,110 +1,147 @@
 #include "scrollbar.h"
 
-scrollbar_t *scrollbar_create(SDL_Surface *sf, int sf_xofs, int sf_yofs, int sf_w, int sf_h, unsigned long max_len) {
+scrollbar_t *scrollbar_create(SDL_Surface * sf, int sf_xofs, int sf_yofs,
+			      int sf_w, int sf_h, unsigned long max_len)
+{
 	scrollbar_t *res = NULL;
-	
-	if(!(res = malloc(sizeof(scrollbar_t))))
+
+	if (!(res = malloc(sizeof(scrollbar_t))))
 		return NULL;
-	
+
 	res->dst = sf;
 	res->sf_xofs = sf_xofs;
 	res->sf_yofs = sf_yofs;
 	res->sf_w = sf_w;
 	res->sf_h = sf_h;
 	res->max_len = max_len;
-	
+
 	res->mouse_mode = SB_OUT;
-	
+
 	res->pos = 0;
-	
+	res->len = max_len;
+
+	res->grip_start = 0;
+	res->grip_end = sf_w - GRIP_SIZE;
+
 	return res;
 }
 
-void scrollbar_destroy(scrollbar_t *sb) {
+void scrollbar_destroy(scrollbar_t * sb)
+{
 	free(sb);
 }
 
-#define	GRIP_SIZE	3
+void scrollbar_draw(scrollbar_t * sb)
+{
+	int ofs = sb->sf_xofs + sb->grip_start;
 
-void scrollbar_draw(scrollbar_t *sb) {
-	int x_start = 5;
-	int x_end = 30;
-	
 	// background
-	boxColor(sb->dst, sb->sf_xofs, sb->sf_yofs, sb->sf_xofs + sb->sf_w, sb->sf_yofs + sb->sf_h, 0x404040ff);
-	
+	boxColor(sb->dst, sb->sf_xofs, sb->sf_yofs, sb->sf_xofs + sb->sf_w,
+		 sb->sf_yofs + sb->sf_h, 0x404040ff);
+
 	// start pos
-	boxColor(sb->dst, sb->sf_xofs + sb->pos, sb->sf_yofs, sb->sf_xofs + sb->pos + GRIP_SIZE, sb->sf_yofs + sb->sf_h, 0x808080ff);
-	
+	boxColor(sb->dst, ofs, sb->sf_yofs, ofs + GRIP_SIZE - 1,
+		 sb->sf_yofs + sb->sf_h, 0x808080ff);
+
 	// filler
-	//boxColor(sb->dst, sb->sf_xofs + x_start + 2 * GRIP_SIZE, sb->sf_yofs, sb->sf_xofs + x_end - 2 * GRIP_SIZE, sb->sf_yofs + sb->sf_h, 0x808080ff);
-	
+	ofs += GRIP_SIZE + GRIP_SPACE;
+	boxColor(sb->dst, ofs, sb->sf_yofs,
+		 sb->sf_xofs + sb->grip_end - GRIP_SPACE - 1,
+		 sb->sf_yofs + sb->sf_h, 0x808080ff);
+
 	// end pos
-	//boxColor(sb->dst, sb->sf_xofs + x_end - GRIP_SIZE, sb->sf_yofs, sb->sf_xofs + x_end , sb->sf_yofs + sb->sf_h, 0x808080ff);
+	ofs = sb->sf_xofs + sb->grip_end;
+	boxColor(sb->dst, ofs, sb->sf_yofs, ofs + GRIP_SIZE - 1,
+		 sb->sf_yofs + sb->sf_h, 0x808080ff);
 }
 
-int mouse_in_rect(int mouse_x, int mouse_y, int x, int y, int w, int h, int *ofs) {
-	if((mouse_x >= x) && (mouse_x <= (x+w)) && (mouse_y >= y) && (mouse_y <= (y+h))) {
-		if(ofs)
-			*ofs = x-mouse_x;
+int mouse_in_rect(int mouse_x, int mouse_y, int x, int y, int w, int h,
+		  int *ofs)
+{
+	if ((mouse_x >= x) && (mouse_x <= (x + w)) && (mouse_y >= y)
+	    && (mouse_y <= (y + h))) {
+		if (ofs)
+			*ofs = x - mouse_x;
 		return 1;
 	}
 	return 0;
 }
 
-void scrollbar_event(scrollbar_t *sb, SDL_Event *evt) {
+void scrollbar_move(scrollbar_t * sb, int x)
+{
+	int diff = sb->grip_end - sb->grip_start;
+
+	switch (sb->mouse_mode) {
+
+	case SB_START:
+		LOWER_LIMIT(x, 0);
+		UPPER_LIMIT(x,
+			    sb->grip_end - (2 * GRIP_SPACE) - (2 * GRIP_SIZE));
+		sb->grip_start = x;
+		break;
+
+	case SB_POS:
+		LOWER_LIMIT(x, GRIP_SIZE + GRIP_SPACE);
+		UPPER_LIMIT(x, sb->sf_w - diff + GRIP_SPACE);
+		sb->grip_start = x - GRIP_SIZE - GRIP_SPACE;
+		sb->grip_end = sb->grip_start + diff;
+		break;
+
+	case SB_END:
+		LOWER_LIMIT(x,
+			    sb->grip_start + (2 * GRIP_SPACE) +
+			    (2 * GRIP_SIZE));
+		UPPER_LIMIT(x, sb->sf_w - GRIP_SIZE);
+		sb->grip_end = x;
+		break;
+
+	default:
+		break;
+	}
+	// TODO: update pos & len
+}
+
+void scrollbar_event(scrollbar_t * sb, SDL_Event * evt)
+{
 	int x, y;
-	int xofs = sb->sf_xofs;
-	int yofs = sb->sf_yofs;
-	int w = sb->sf_w;
 	int h = sb->sf_h;
-	int start = xofs + sb->pos;
-	int end = xofs; // TODO x_end
-	int mid_start = xofs; // TODO
-	int mid_len = 10; // TODO
-	
-	switch(evt->type) {
-		
-		case SDL_MOUSEBUTTONDOWN:
-			x = evt->button.x;
-			y = evt->button.y;
-		
-			if(mouse_in_rect(x,y,start,yofs,GRIP_SIZE,h,&(sb->mouse_ofs)))
-				sb->mouse_mode = SB_START;
-			
-			else if(mouse_in_rect(x,y,mid_start,yofs,mid_len,h,&(sb->mouse_ofs)))
-				sb->mouse_mode = SB_POS;
-			
-			else if(mouse_in_rect(x,y,end,yofs,GRIP_SIZE,h,&(sb->mouse_ofs)))
-				sb->mouse_mode = SB_END;
-			
-			else
-				sb->mouse_mode = SB_OUT;
-			break;
-		
-		case SDL_MOUSEBUTTONUP:
+	int grip_pos = sb->grip_start + GRIP_SIZE + GRIP_SPACE;
+	int grip_pos_len = sb->grip_end - GRIP_SPACE - grip_pos;
+
+	switch (evt->type) {
+
+	case SDL_MOUSEBUTTONDOWN:
+		x = evt->button.x - sb->sf_xofs;
+		y = evt->button.y - sb->sf_yofs;
+
+		if (mouse_in_rect
+		    (x, y, sb->grip_start, 0, GRIP_SIZE, h, &(sb->mouse_ofs)))
+			sb->mouse_mode = SB_START;
+
+		else if (mouse_in_rect
+			 (x, y, grip_pos, 0, grip_pos_len, h, &(sb->mouse_ofs)))
+			sb->mouse_mode = SB_POS;
+
+		else if (mouse_in_rect
+			 (x, y, sb->grip_end, 0, GRIP_SIZE, h,
+			  &(sb->mouse_ofs)))
+			sb->mouse_mode = SB_END;
+
+		else
 			sb->mouse_mode = SB_OUT;
-			break;
-		
-		case SDL_MOUSEMOTION:
-			x = evt->motion.x;
-			y = evt->motion.y;
-		
-			switch(sb->mouse_mode) {
-				case SB_START:
-					sb->pos = x - xofs + sb->mouse_ofs;
-					//printf("%d\n",sb->pos);
-					if(sb->pos < 0)
-						sb->pos = 0;
-					break;
-				case SB_POS:
-					break;
-				case SB_END:
-					break;
-				default:
-					break;
-			}
-			break;
-		
+		break;
+
+	case SDL_MOUSEBUTTONUP:
+		sb->mouse_mode = SB_OUT;
+		break;
+
+	case SDL_MOUSEMOTION:
+		x = evt->motion.x - sb->sf_xofs;
+		y = evt->motion.y - sb->sf_yofs;
+
+		if (sb->mouse_mode != SB_OUT)
+			scrollbar_move(sb, x + sb->mouse_ofs);
+		break;
+
 	}
 }
