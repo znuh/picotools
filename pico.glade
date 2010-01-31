@@ -18,8 +18,7 @@
   <property name="gravity">GDK_GRAVITY_NORTH_WEST</property>
   <property name="focus_on_map">True</property>
   <property name="urgency_hint">False</property>
-  <signal name="destroy" handler="quit" last_modification_time="Sat, 19 Sep 2009 14:16:37 GMT"/>
-  <signal name="show" handler="init" />
+  <signal name="destroy" handler="window1_destroy" last_modification_time="Sat, 19 Sep 2009 14:16:37 GMT"/>
   <child>
     <widget class="GtkVBox" id="vbox1">
       <property name="visible">True</property>
@@ -266,7 +265,7 @@ DC</property>
 	  <property name="digits">0</property>
 	  <property name="update_policy">GTK_UPDATE_CONTINUOUS</property>
 	  <property name="inverted">False</property>
-	  <property name="adjustment">1 1 1000000 1000 1000 0</property>
+	  <property name="adjustment">1 1 100 10 10 0</property>
 	  <signal name="value_changed" handler="on_srate_scale_value_changed" last_modification_time="Sat, 19 Sep 2009 14:19:37 GMT"/>
 	</widget>
 	<packing>
@@ -457,7 +456,6 @@ both</property>
 	  <property name="inverted">False</property>
 	  <property name="adjustment">0 -32512 32512 256 1024 0</property>
 	  <signal name="value_changed" handler="on_trig_volt_scale_value_changed" last_modification_time="Sat, 19 Sep 2009 14:19:42 GMT"/>
-	  <signal name="value_changed" handler="on_trig_volt_scale_value_changed" last_modification_time="Sat, 19 Sep 2009 14:20:14 GMT"/>
 	</widget>
 	<packing>
 	  <property name="padding">0</property>
@@ -525,9 +523,8 @@ both</property>
 	  <property name="digits">0</property>
 	  <property name="update_policy">GTK_UPDATE_CONTINUOUS</property>
 	  <property name="inverted">False</property>
-	  <property name="adjustment">0 0 128000000 1000 1000 0</property>
+	  <property name="adjustment">0 0 2048 64 64 0</property>
 	  <signal name="value_changed" handler="on_trig_ofs_scale_value_changed" last_modification_time="Sat, 19 Sep 2009 14:19:48 GMT"/>
-	  <signal name="value_changed" handler="on_trig_ofs_scale_value_changed" last_modification_time="Sat, 19 Sep 2009 14:20:19 GMT"/>
 	</widget>
 	<packing>
 	  <property name="padding">0</property>

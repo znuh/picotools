@@ -42,5 +42,5 @@ void on_trig_edge_cbox_changed(GtkWidget * w, gpointer priv);
 void on_ch2_range_cbox_changed(GtkWidget * w, gpointer priv);
 void on_auto_btn_toggled(GtkWidget * w, gpointer priv);
 void on_single_btn_toggled(GtkWidget * w, gpointer priv);
-
+void init(void);
 #endif

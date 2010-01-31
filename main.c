@@ -66,6 +66,8 @@ int main(int argc, char **argv)
 			gtk_window_set_title(w, "pscope - NONE");
 	}
 
+	init();
+
 	gtk_main();
 
 	return 0;

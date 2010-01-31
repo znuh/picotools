@@ -15,6 +15,7 @@
  */
 #include <gtk/gtk.h>
 #include <glade/glade.h>
+#include <string.h>
 #include "scope.h"
 
 GtkLabel *samples_lbl;
@@ -65,6 +66,8 @@ void single_done(void)
 
 unsigned long sbuf_len = 0;
 unsigned long tbase = 0;
+unsigned long selected_tbase = 0;
+unsigned long samples_selected = 0;
 unsigned long ns = 0;
 float srate = 0;
 
@@ -163,7 +166,7 @@ void update_trigger_offset(void)
 	float pre, post;
 
 	scaled_val *= scope_config.trig_ofs;
-	scaled_val /= 128000000;	// FIXME: where does this come from??
+	scaled_val /= 2048;	// max. val of slider
 
 	post = sbuf_len - scaled_val;
 	pre = sbuf_len - post;
@@ -185,6 +188,81 @@ void update_trigger_offset(void)
 		sprintf(buf, "post %.3fkS (%s)", post / 1000, tbuf);
 	gtk_label_set_text(trig_post_lbl, buf);
 }
+
+/***************** srate/buffer config **************************/
+
+void update_time(void)
+{
+	char buf[64], tbuf[64];
+	float stime = ns;
+
+	if ((ns == 0) || (sbuf_len == 0))
+		return;
+
+	format_time(tbuf, stime * sbuf_len);
+
+	sprintf(buf, "time: %s", tbuf);
+	gtk_label_set_text(time_lbl, buf);
+}
+
+void update_srate(void)
+{
+	char buf[64];
+
+	tbase = selected_tbase;
+
+	// 2 channels -> 500 MS/s max.
+	if (((scope_config.channel_config & 3) == 3) && (!tbase))
+		tbase = 1;
+
+	if (tbase <= 2) {
+		ns = (1 << tbase);
+	} else {
+		ns = (tbase - 2) * 8;
+	}
+	srate = 1000.0;
+	srate /= ns;
+	sprintf(buf, "srate %.2f MS/s (%ld ns)", srate, ns);
+	gtk_label_set_text(srate_lbl, buf);
+	update_time();
+	update_trigger_offset();
+	schedule_reconfig();
+}
+
+void update_samples(void)
+{
+	char buf[64];
+	int samples = samples_selected;
+	int shift;
+	int remainder;
+	char ch_str[8] = "";
+
+	shift = (samples >> 4) + 12;
+	remainder = samples & 0xf;
+
+	sbuf_len = (1 << shift) | (remainder << (shift - 4));
+
+	if (scope_type != SCOPE_PS5204)
+		sbuf_len /= 2;
+
+	if ((scope_config.channel_config & 3) == 3) {
+		strcpy(ch_str, "2x ");
+		sbuf_len /= 2;
+	}
+	//printf("%lx\n",sbuf_len);
+	if (sbuf_len < 1000000)
+		sprintf(buf, "%s%.3f ksamples", ch_str,
+			((float)sbuf_len) / 1000);
+	else
+		sprintf(buf, "%s%.3f Msamples", ch_str,
+			((float)sbuf_len) / 1024000);
+	gtk_label_set_text(samples_lbl, buf);
+	update_time();
+	update_trigger_offset();
+	schedule_reconfig();
+}
+
+/*********************** handlers ****************************/
 
 void on_ch1_range_cbox_changed(GtkWidget * w, gpointer priv)
 {
@@ -213,6 +291,8 @@ void on_ch1_btn_toggled(GtkWidget * w, gpointer priv)
 	int val = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(w));
 	scope_config.channel_config &= ~(1 << 0);
 	scope_config.channel_config |= (val << 0);
+	update_srate();
+	update_samples();
 	scope_channel_config(0);
 }
 
@@ -221,6 +301,8 @@ void on_ch2_btn_toggled(GtkWidget * w, gpointer priv)
 	int val = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(w));
 	scope_config.channel_config &= ~(1 << 1);
 	scope_config.channel_config |= (val << 1);
+	update_srate();
+	update_samples();
 	scope_channel_config(1);
 }
 
@@ -242,57 +324,16 @@ void on_ch2_cpl_cbox_changed(GtkWidget * w, gpointer priv)
 	scope_channel_config(1);
 }
 
-/***************** srate/buffer config **************************/
-
-void update_time(void)
-{
-	char buf[64], tbuf[64];
-	float stime = ns;
-
-	if ((ns == 0) || (sbuf_len == 0))
-		return;
-
-	format_time(tbuf, stime * sbuf_len);
-
-	sprintf(buf, "time: %s", tbuf);
-	gtk_label_set_text(time_lbl, buf);
-}
-
 void on_samples_scale_value_changed(GtkWidget * w, gpointer priv)
 {
-	char buf[64];
-	int shift = ((int)gtk_range_get_value(GTK_RANGE(w)) >> 4) + 12;
-	int remainder = (int)gtk_range_get_value(GTK_RANGE(w)) & 0xf;
-
-	sbuf_len = (1 << shift) | (remainder << (shift - 4));
-	//printf("%lx\n",sbuf_len);
-	if (sbuf_len < 1000000)
-		sprintf(buf, "%.3f ksamples", ((float)sbuf_len) / 1000);
-	else
-		sprintf(buf, "%.3f Msamples", ((float)sbuf_len) / 1024000);
-	gtk_label_set_text(samples_lbl, buf);
-	update_time();
-	update_trigger_offset();
-	schedule_reconfig();
+	samples_selected = (int)gtk_range_get_value(GTK_RANGE(w));
+	update_samples();
 }
 
 void on_srate_scale_value_changed(GtkWidget * w, gpointer priv)
 {
-	char buf[64];
-	tbase = 100 - gtk_range_get_value(GTK_RANGE(w)) / 10000;
-
-	if (tbase <= 2) {
-		ns = (1 << tbase);
-	} else {
-		ns = (tbase - 2) * 8;
-	}
-	srate = 1000.0;
-	srate /= ns;
-	sprintf(buf, "srate %.2f MS/s (%ld ns)", srate, ns);
-	gtk_label_set_text(srate_lbl, buf);
-	update_time();
-	update_trigger_offset();
-	schedule_reconfig();
+	selected_tbase = 100 - gtk_range_get_value(GTK_RANGE(w));
+	update_srate();
 }
 
 /***************** trigger config **************************/
@@ -352,12 +393,53 @@ void on_trig_edge_cbox_changed(GtkWidget * w, gpointer priv)
 	scope_trigger_config();
 }
 
-void init(GtkWidget * widget, gpointer user_data)
+void init(void)
 {
-	// TODO: display initial values
+	GtkWidget *w;
+
+	// set initial values
+
+	// ch1+ch2 ranges, dc
+	w = glade_xml_get_widget(glade, "ch1_range_cbox");
+	gtk_combo_box_set_active(GTK_COMBO_BOX(w), 7);
+
+	w = glade_xml_get_widget(glade, "ch1_cpl_cbox");
+	gtk_combo_box_set_active(GTK_COMBO_BOX(w), 1);
+
+	w = glade_xml_get_widget(glade, "ch2_range_cbox");
+	gtk_combo_box_set_active(GTK_COMBO_BOX(w), 7);
+
+	w = glade_xml_get_widget(glade, "ch2_cpl_cbox");
+	gtk_combo_box_set_active(GTK_COMBO_BOX(w), 1);
+
+	// srate
+	w = glade_xml_get_widget(glade, "srate_scale");
+	gtk_range_set_value(GTK_RANGE(w), 1);
+	on_srate_scale_value_changed(w, 0);
+
+	// sbuf
+	w = glade_xml_get_widget(glade, "samples_scale");
+	gtk_range_set_value(GTK_RANGE(w), 0);
+	on_samples_scale_value_changed(w, 0);
+
+	// trig src, edge, volt, ofs
+	w = glade_xml_get_widget(glade, "trig_src_cbox");
+	gtk_combo_box_set_active(GTK_COMBO_BOX(w), 0);
+
+	w = glade_xml_get_widget(glade, "trig_edge_cbox");
+	gtk_combo_box_set_active(GTK_COMBO_BOX(w), 0);
+
+	w = glade_xml_get_widget(glade, "trig_volt_scale");
+	gtk_range_set_value(GTK_RANGE(w), 8192);
+	on_trig_volt_scale_value_changed(w, 0);
+
+	w = glade_xml_get_widget(glade, "trig_ofs_scale");
+	gtk_range_set_value(GTK_RANGE(w), 512);
+	on_trig_ofs_scale_value_changed(w, 0);
+
 }
 
-void quit(GtkObject * object, gpointer user_data)
+void window1_destroy(GtkObject * object, gpointer user_data)
 {
 	scope_close();
 	gtk_main_quit();

@@ -9,13 +9,17 @@
 	- show trigger point
 	
     GtkUI:
-	- PS5203 suport
-	- initial values
-	- adjust samplebuffer for GS / 2ch.
-	- CSV: fix trigger time=0
+	+ PS5203 suport
+	+ initial values
+	+ adjust samplebuffer for GS / 2ch.
+	+ CSV: fix trigger time=0
+	- fix run/auto buttons
 
 0.2:
     wview:
 	- 2 scrollbars for large buffers
 	- cursors
 	- display more values (time, dV, etc.)
+	- signal gen?
+	- settings cfgfile
+

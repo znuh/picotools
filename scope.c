@@ -92,6 +92,7 @@ void PREF4 CallBackBlock(short handle, PICO_STATUS status, void *pParameter)
 {
 	char fname[64];
 	unsigned long scnt = scope_config.samples;
+	unsigned long pre = 0;
 	FILE *fl;
 	int cnt;
 	short *d1 = NULL, *d2 = NULL;
@@ -126,9 +127,12 @@ void PREF4 CallBackBlock(short handle, PICO_STATUS status, void *pParameter)
 	sprintf(fname, "%ld.txt", time(NULL));
 	fl = fopen(fname, "w");
 
+	if (scope_config.trig_enabled)
+		pre = scope_config.pre_trig;
+
 	for (cnt = 0; cnt < scnt; cnt++) {
 		float scaled_a, scaled_b, vala, valb;
-		double tstamp = cnt;
+		double tstamp = cnt - pre;
 		if (d1) {
 			vala = d1[cnt];
 			scaled_a = vala * scope_config.f_range[0];	// scale to Volts
