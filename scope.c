@@ -39,7 +39,7 @@ int scope_open(void)
 		ps5000GetUnitInfo(handle, line, sizeof(line), &r, i);
 		if (i == 3)
 			scope_type = atoi(line);
-		printf("%s\n", line);
+		//printf("%s\n", line);
 	}
 	assert((scope_type == SCOPE_PS5204) || (scope_type == SCOPE_PS5203));
 	return 0;
@@ -129,10 +129,10 @@ void PREF4 CallBackBlock(short handle, PICO_STATUS status, void *pParameter)
 
 	if (scope_config.trig_enabled)
 		pre = scope_config.pre_trig;
-
+	
 	for (cnt = 0; cnt < scnt; cnt++) {
 		float scaled_a, scaled_b, vala, valb;
-		double tstamp = cnt - pre;
+		double tstamp = cnt;
 		if (d1) {
 			vala = d1[cnt];
 			scaled_a = vala * scope_config.f_range[0];	// scale to Volts
@@ -143,15 +143,16 @@ void PREF4 CallBackBlock(short handle, PICO_STATUS status, void *pParameter)
 			scaled_b = valb * scope_config.f_range[1];	// scale to Volts
 			scaled_b /= PS5000_MAX_VALUE;
 		}
+		tstamp -= pre;
 		tstamp *= ns;
 		tstamp /= 1000000000;
 
 		if ((d1) && (d2))
-			fprintf(fl, "%e %f %f\n", tstamp, scaled_a, scaled_b);
+			fprintf(fl, "%f %f %f\n", tstamp, scaled_a, scaled_b);
 		else if (d1)
-			fprintf(fl, "%e %f\n", tstamp, scaled_a);
+			fprintf(fl, "%f %f\n", tstamp, scaled_a);
 		else if (d2)
-			fprintf(fl, "%e %f\n", tstamp, scaled_b);
+			fprintf(fl, "%f %f\n", tstamp, scaled_b);
 	}
 
 	fclose(fl);
