@@ -255,7 +255,7 @@ void update_samples(void)
 			((float)sbuf_len) / 1000);
 	else
 		sprintf(buf, "%s%.3f Msamples", ch_str,
-			((float)sbuf_len) / 1024000);
+			((float)sbuf_len) / 1000000);
 	gtk_label_set_text(samples_lbl, buf);
 	update_time();
 	update_trigger_offset();
