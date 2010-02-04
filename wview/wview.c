@@ -53,7 +53,7 @@ int last = -1;
 void sample_draw(wview_t * wv, int x, float y, uint32_t color)
 {
 	// TODO: y range checks (top/bottom)
-	//printf("%f\n",y);
+	//printf("%d %f\n",x,y);
 	if (last >= 0)
 		aalineColor(sdl.screen, x - 1, last, x, y, color);
 	last = y;
@@ -72,11 +72,20 @@ void wview_redraw(wview_t * wv)
 
 	//printf("x_zoom %f\n",x_zoom);
 	//printf("%ld samples/pixel\n",samples_per_pixel);
+	rectangleColor(sdl.screen, wv->x_ofs, 0, wv->target_w+wv->x_ofs - 1, wv->target_h, 0xffffff40);
 
+	for(scnt = wv->target_h/8; scnt < wv->target_h; scnt += wv->target_h/8) {
+		hlineColor(sdl.screen, wv->x_ofs+1, wv->target_w + wv->x_ofs - 2, scnt, 0xffffff40);
+	}
+	
+	for(scnt = wv->target_w/8; scnt < wv->target_w; scnt += wv->target_w/8) {
+		vlineColor(sdl.screen, wv->x_ofs + scnt, 1, wv->target_h - 1, 0xffffff40);
+	}
+	
 	for (buf_cnt = 0; buf_cnt < wv->sbuf_cnt; buf_cnt++) {
 		samplebuf_t *sbuf = &(wv->sbuf[buf_cnt]);
 		float avg = 0;
-		int x = 0;
+		int x = wv->x_ofs;
 
 		last = -1;
 
@@ -159,7 +168,7 @@ int main(int argc, char **argv)
 			wview.sbuf_cnt = 2;
 	}
 
-	sbuf[0].y_ofs = 256;	// channel y offset
+	sbuf[0].y_ofs = 256+5;	// channel y offset
 	sbuf[1].y_ofs = 512;	// channel y offset
 
 	// channel min/max
@@ -189,16 +198,17 @@ int main(int argc, char **argv)
 	//wview.y_cnt = sbuf.max_val + 1;
 
 	// main window
-	wview.target_w = 1000;
-	wview.target_h = 600;
+	wview.x_ofs = 10;
+	wview.target_w = 1024;
+	wview.target_h = 512;
 
 	printf("%ld samples, target_w %ld\n", wview.samples, wview.target_w);
 
-	sdl_init(wview.target_w, wview.target_h);
+	sdl_init(wview.target_w+20, wview.target_h+40);
 
 	assert((sb =
-		scrollbar_create(sdl.screen, 0, wview.target_h - 12,
-				 wview.target_w, 12, wview.target_w,
+		scrollbar_create(sdl.screen, 0, wview.target_h + 5,
+				 wview.target_w+20, 12, wview.target_w-20,
 				 wview.samples)));
 
 	wview_redraw(&wview);

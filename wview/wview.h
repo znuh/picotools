@@ -41,6 +41,7 @@ typedef struct wview_s {
 	unsigned long x_cnt, y_cnt;
 
 	unsigned long target_w, target_h;
+	unsigned long x_ofs;
 } wview_t;
 
 #endif
