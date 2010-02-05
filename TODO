@@ -20,6 +20,8 @@
 	- 2 scrollbars for large buffers
 	- cursors
 	- display more values (time, dV, etc.)
-	- signal gen?
 	- settings cfgfile
+    GtkUI:
+	- use more scope buffers if sbuf small enough
+	- AWG support
 
