@@ -115,6 +115,7 @@ void wview_redraw(wview_t * wv)
 			// TODO: draw every m'th pixel with alpha
 
 			if (!((scnt + 1) % samples_per_pixel)) {
+				int did_vline = 0;
 
 				//float val = avg / (float)samples_per_pixel;
 				//printf("%f\n",avg/samples_per_pixel);
@@ -128,6 +129,7 @@ void wview_redraw(wview_t * wv)
 						   wv->y_ofs + lower,
 						   wv->y_ofs + upper,
 						   color[buf_cnt]);
+					did_vline = 1;
 				}
 				// last valid?
 				if (last_lower >= 0) {
@@ -142,8 +144,9 @@ void wview_redraw(wview_t * wv)
 							    wv->y_ofs +
 							    lower,
 							    color[buf_cnt]);
-					} else if (upper > last_lower) {
-						// falling
+					} else if ((upper > last_lower)
+						   || (!did_vline)) {
+						// falling OR no line done yet
 						aalineColor(sdl.screen,
 							    wv->x_ofs + x - 1,
 							    wv->y_ofs +
@@ -248,6 +251,13 @@ int main(int argc, char **argv)
 
 	wview.samples = mf[0].len - 164;
 
+	///// ugly test
+	if (!(strcmp(argv[1] + strlen(argv[1]) - 3, ".wv"))) {
+		sbuf[0].max_val = 32768;
+		sbuf[0].min_val = -32768;
+		sbuf[0].dtype = INT16;
+		wview.samples /= 2;
+	}
 	// x zoom: min (show all samples)
 	wview.x_pos = 0;
 	wview.x_cnt = wview.samples;
