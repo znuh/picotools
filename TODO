@@ -1,12 +1,12 @@
 0.1:
     wview:
 	+ scrollbar
-	- live display
-	- 2 channels
-	- grid
-	- better zoom out
+	+ 2 channels
+	+ grid
+	+ better zoom out
 	- time offset
 	- show trigger point
+	- live display
 	
     GtkUI:
 	+ PS5203 suport
@@ -17,6 +17,7 @@
 
 0.2:
     wview:
+	- waveform zoom out draw n times with alpha
 	- 2 scrollbars for large buffers
 	- cursors
 	- display more values (time, dV, etc.)

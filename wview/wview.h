@@ -40,8 +40,8 @@ typedef struct wview_s {
 	unsigned long x_pos, y_pos;
 	unsigned long x_cnt, y_cnt;
 
+	unsigned long x_ofs, y_ofs;
 	unsigned long target_w, target_h;
-	unsigned long x_ofs;
 } wview_t;
 
 #endif

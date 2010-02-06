@@ -9,6 +9,9 @@
 #define UPPER_LIMIT(a,b)	((a) = (((a) > (b)) ? (b) : (a)))
 #define LOWER_LIMIT(a,b)	((a) = (((a) < (b)) ? (b) : (a)))
 
+#define SB_CHANGED		1
+#define SB_VALS_CHANGED	2
+
 typedef enum MouseMode {
 	SB_OUT,
 	SB_START,
@@ -50,6 +53,6 @@ void scrollbar_destroy(scrollbar_t * sb);
 
 void scrollbar_draw(scrollbar_t * sb);
 
-void scrollbar_event(scrollbar_t * sb, SDL_Event * evt);
+int scrollbar_event(scrollbar_t * sb, SDL_Event * evt);
 
 #endif

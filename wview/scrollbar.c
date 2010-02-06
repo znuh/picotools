@@ -68,7 +68,7 @@ void scrollbar_draw(scrollbar_t * sb)
 		 sb->sf_yofs + sb->sf_h, 0x808080ff);
 }
 
-void scrollbar_adjust(scrollbar_t * sb)
+int scrollbar_adjust(scrollbar_t * sb)
 {
 	float diff =
 	    sb->grip_end - sb->grip_start - (GRIP_SIZE * 2) - (GRIP_SPACE * 2);
@@ -76,6 +76,8 @@ void scrollbar_adjust(scrollbar_t * sb)
 	float max_pos = max_diff;
 	float len = (float)(sb->max_len - sb->min_len) * diff;
 	float pos = (float)(sb->max_len - sb->min_len) * sb->grip_start;
+	float last_len = len;
+	float last_pos = pos;
 
 	len /= max_diff;
 	len += sb->min_len;
@@ -88,10 +90,17 @@ void scrollbar_adjust(scrollbar_t * sb)
 
 	//printf("pos %f\n",pos);
 
+	if ((sb->pos != last_pos) || (sb->len != last_len))
+		return SB_VALS_CHANGED;
+
+	return 0;
 }
 
-void scrollbar_move(scrollbar_t * sb, int x)
+int scrollbar_move(scrollbar_t * sb, int x)
 {
+	int changed = 0;
+	int last_start = sb->grip_start;
+	int last_end = sb->grip_end;
 	int diff = sb->grip_end - sb->grip_start;
 
 	switch (sb->mouse_mode) {
@@ -121,7 +130,13 @@ void scrollbar_move(scrollbar_t * sb, int x)
 	default:
 		break;
 	}
-	scrollbar_adjust(sb);
+
+	if ((last_start != sb->grip_start) || (last_end != sb->grip_end))
+		changed = SB_CHANGED;
+
+	changed |= scrollbar_adjust(sb);
+
+	return changed;
 }
 
 int mouse_in_rect(int mouse_x, int mouse_y, int x, int y, int w, int h,
@@ -136,8 +151,9 @@ int mouse_in_rect(int mouse_x, int mouse_y, int x, int y, int w, int h,
 	return 0;
 }
 
-void scrollbar_event(scrollbar_t * sb, SDL_Event * evt)
+int scrollbar_event(scrollbar_t * sb, SDL_Event * evt)
 {
+	int changed = 0;
 	int x, y;
 	int h = sb->sf_h;
 	int grip_pos = sb->grip_start + GRIP_SIZE + GRIP_SPACE;
@@ -175,8 +191,10 @@ void scrollbar_event(scrollbar_t * sb, SDL_Event * evt)
 		y = evt->motion.y - sb->sf_yofs;
 
 		if (sb->mouse_mode != SB_OUT)
-			scrollbar_move(sb, x + sb->mouse_ofs);
+			changed = scrollbar_move(sb, x + sb->mouse_ofs);
 		break;
 
 	}
+
+	return changed;
 }

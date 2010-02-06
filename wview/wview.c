@@ -42,111 +42,168 @@ float samplebuf_get_sample(samplebuf_t * s, unsigned long sample)
 	return res;
 }
 
-// method: zoom@(x,y,delta_zoom)
-
-// TODO: 10x alphablended uebermalen
-
 extern struct sdl_ctx sdl;
 
-int last = -1;
-
-void sample_draw(wview_t * wv, int x, float y, uint32_t color)
+int pixel_from_sample(samplebuf_t * sbuf, float sample)
 {
-	// TODO: y range checks (top/bottom)
-	//printf("%d %f\n",x,y);
-	if (last >= 0)
-		aalineColor(sdl.screen, x - 1, last, x, y, color);
-	last = y;
-	//pixelColor(sdl.screen, x, 256-y, 0xffffffff);
+	float val = sample;
+	int pixel;
+
+	val *= 256;		//(wv->y_cnt);
+	val /= (sbuf->max_val - sbuf->min_val);
+	val = sbuf->y_ofs - val;
+
+	// TODO: round?
+	pixel = val;
+
+	return pixel;
 }
 
-scrollbar_t *sb;
+#define H_DIVS		8
+#define V_DIVS		8
 
 void wview_redraw(wview_t * wv)
 {
 	uint32_t color[] = { 0x8080ffff, 0xff8080ff };
-	//float x_zoom = (float)wv->target_w / (float)wv->x_cnt;
+	int y_ofs = wv->y_ofs;
 	unsigned long scnt;
 	int samples_per_pixel = wv->x_cnt / wv->target_w;
 	int buf_cnt;
 
-	//printf("x_zoom %f\n",x_zoom);
+	//printf("x_cnt %d\n",wv->x_cnt);
 	//printf("%ld samples/pixel\n",samples_per_pixel);
-	rectangleColor(sdl.screen, wv->x_ofs, 0, wv->target_w+wv->x_ofs - 1, wv->target_h, 0xffffff40);
 
-	for(scnt = wv->target_h/8; scnt < wv->target_h; scnt += wv->target_h/8) {
-		hlineColor(sdl.screen, wv->x_ofs+1, wv->target_w + wv->x_ofs - 2, scnt, 0xffffff40);
-	}
-	
-	for(scnt = wv->target_w/8; scnt < wv->target_w; scnt += wv->target_w/8) {
-		vlineColor(sdl.screen, wv->x_ofs + scnt, 1, wv->target_h - 1, 0xffffff40);
-	}
-	
+	// frame
+	rectangleColor(sdl.screen, wv->x_ofs, y_ofs,
+		       wv->target_w + wv->x_ofs - 1,
+		       wv->y_ofs + wv->target_h - 1, 0xffffff40);
+
+	// vertical divisions
+	for (scnt = wv->target_h / V_DIVS; scnt < wv->target_h;
+	     scnt += wv->target_h / V_DIVS)
+		hlineColor(sdl.screen, wv->x_ofs + 1,
+			   wv->target_w + wv->x_ofs - 2, y_ofs + scnt,
+			   0xffffff40);
+
+	// horizontal divisions
+	for (scnt = wv->target_w / H_DIVS; scnt < wv->target_w;
+	     scnt += wv->target_w / H_DIVS)
+		vlineColor(sdl.screen, wv->x_ofs + scnt, y_ofs + 1,
+			   y_ofs + wv->target_h - 2, 0xffffff40);
+
+	// foreach sample buffer
 	for (buf_cnt = 0; buf_cnt < wv->sbuf_cnt; buf_cnt++) {
 		samplebuf_t *sbuf = &(wv->sbuf[buf_cnt]);
-		float avg = 0;
-		int x = wv->x_ofs;
+		float max_val = sbuf->min_val;
+		float min_val = sbuf->max_val;
+		int last_min_pixel = -1;
+		int last_max_pixel = -1;
+		int x = 0;
 
-		last = -1;
-
+		// foreach sample
 		for (scnt = 0; scnt < wv->x_cnt; scnt++) {
 			float val =
 			    samplebuf_get_sample(sbuf, wv->x_pos + scnt);
+			int min_pixel, max_pixel;
 
-			avg += val;
+			if (val > max_val)
+				max_val = val;
 
-			// TODO: max/min?
+			if (val < min_val)
+				min_val = val;
 
-			// draw every m'th pixel with alpha
+			// TODO: draw every m'th pixel with alpha
+
 			if (!((scnt + 1) % samples_per_pixel)) {
-				float val = avg / (float)samples_per_pixel;
-				val *= 256;	//(wv->y_cnt);
-				val /= (sbuf->max_val - sbuf->min_val);
-				val = sbuf->y_ofs - val;
+
+				//float val = avg / (float)samples_per_pixel;
 				//printf("%f\n",avg/samples_per_pixel);
-				sample_draw(wv, x++, val, color[buf_cnt]);
+
+				min_pixel = pixel_from_sample(sbuf, min_val);
+				max_pixel = pixel_from_sample(sbuf, max_val);
+
+				if (min_pixel != max_pixel) {
+					aalineColor(sdl.screen, wv->x_ofs + x,
+						    wv->y_ofs + min_pixel,
+						    wv->x_ofs + x,
+						    wv->y_ofs + max_pixel,
+						    color[buf_cnt]);
+				}
+
+				if (last_min_pixel >= 0) {
+
+					if (min_pixel >= last_max_pixel) {
+						aalineColor(sdl.screen,
+							    wv->x_ofs + x - 1,
+							    wv->y_ofs +
+							    last_max_pixel,
+							    wv->x_ofs + x,
+							    wv->y_ofs +
+							    min_pixel,
+							    color[buf_cnt]);
+					} else {
+						//assert(max_pixel <= last_min_pixel);
+						aalineColor(sdl.screen,
+							    wv->x_ofs + x - 1,
+							    wv->y_ofs +
+							    last_min_pixel,
+							    wv->x_ofs + x,
+							    wv->y_ofs +
+							    max_pixel,
+							    color[buf_cnt]);
+					}
+				}
+
+				last_min_pixel = min_pixel;
+				last_max_pixel = max_pixel;
+
 				// TODO: scale y, draw line from last
-				avg = 0;
+				max_val = sbuf->min_val;
+				min_val = sbuf->max_val;
+
+				x++;
 			}
+			// cropping seems to be a better option than using non-constant samples_per_pixel
+			if (x == wv->target_w)
+				break;
 		}
+		//printf("x: %d\n", x);
 	}
-	scrollbar_draw(sb);
-	sdl_flip();
 }
-
-//unsigned long pixel_to_sample(wview_t *wv, unsigned long x_pixel) {
-
-//}
 
 void event_loop(wview_t * wv, scrollbar_t * sb)
 {
+	int redraw = SB_VALS_CHANGED;
+
 	while (1) {
 		SDL_Event event;
 
-		SDL_WaitEvent(&event);
+		SDL_WaitEvent(NULL);
 
-		if ((event.type == SDL_MOUSEMOTION)
-		    || (event.type == SDL_MOUSEBUTTONDOWN)
-		    || (event.type == SDL_MOUSEBUTTONUP)) {
-			scrollbar_event(sb, &event);
+		while (SDL_PollEvent(&event)) {
+			if ((event.type == SDL_MOUSEMOTION)
+			    || (event.type == SDL_MOUSEBUTTONDOWN)
+			    || (event.type == SDL_MOUSEBUTTONUP)) {
+				redraw |= scrollbar_event(sb, &event);
+			}
+
+			if (event.type == SDL_QUIT)
+				return;
 		}
 
-		switch (event.type) {
-		case SDL_MOUSEMOTION:
-			//printf("Mouse moved by %d,%d to (%d,%d)\n", 
-			//              event.motion.xrel, event.motion.yrel,
-			//              event.motion.x, event.motion.y);
-			wv->x_cnt = sb->len;	//(wv->samples / sdl.w) * event.motion.x;
-			wv->x_pos = sb->pos;
+		wv->x_cnt = sb->len;
+		wv->x_pos = sb->pos;
 
-			//if (wv->x_cnt < sdl.w)
-			//      wv->x_cnt = sdl.w;
+		if (redraw) {
+			//if(redraw & SB_CHANGED)
+			// always redraw scrollbar otherwise it'll disappear
+			scrollbar_draw(sb);
 
-			wview_redraw(wv);
-			break;
-		case SDL_QUIT:
-			return;
+			if (redraw & SB_VALS_CHANGED)
+				wview_redraw(wv);
+			sdl_flip();
 		}
+		redraw = 0;
 	}
 }
 
@@ -154,6 +211,7 @@ int main(int argc, char **argv)
 {
 	samplebuf_t sbuf[2];
 	wview_t wview;
+	scrollbar_t *sb;
 	mf_t mf[2];
 
 	assert(argc > 1);
@@ -168,7 +226,7 @@ int main(int argc, char **argv)
 			wview.sbuf_cnt = 2;
 	}
 
-	sbuf[0].y_ofs = 256+5;	// channel y offset
+	sbuf[0].y_ofs = 256;	// channel y offset
 	sbuf[1].y_ofs = 512;	// channel y offset
 
 	// channel min/max
@@ -193,25 +251,22 @@ int main(int argc, char **argv)
 	wview.x_pos = 0;
 	wview.x_cnt = wview.samples;
 
-	// TODO: y zoom: min (show all)
-	//wview.y_pos = 0;
-	//wview.y_cnt = sbuf.max_val + 1;
-
 	// main window
 	wview.x_ofs = 10;
+	wview.y_ofs = 10;
 	wview.target_w = 1024;
 	wview.target_h = 512;
 
 	printf("%ld samples, target_w %ld\n", wview.samples, wview.target_w);
 
-	sdl_init(wview.target_w+20, wview.target_h+40);
+	sdl_init(wview.target_w + wview.x_ofs * 2,
+		 wview.target_h + wview.y_ofs * 2 + 20);
 
 	assert((sb =
-		scrollbar_create(sdl.screen, 0, wview.target_h + 5,
-				 wview.target_w+20, 12, wview.target_w-20,
+		scrollbar_create(sdl.screen, 0,
+				 wview.target_h + wview.y_ofs * 2 + 5,
+				 wview.target_w + 20, 12, wview.target_w,
 				 wview.samples)));
-
-	wview_redraw(&wview);
 
 	event_loop(&wview, sb);
 
