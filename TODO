@@ -17,6 +17,8 @@
 
 0.2:
     wview:
+	- zoom in with mouse rectangle
+	- step-wise scrolling with sb. clicks / mousewheel
 	- waveform zoom out draw n times with alpha
 	- 2 scrollbars for large buffers
 	- cursors

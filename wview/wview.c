@@ -123,11 +123,10 @@ void wview_redraw(wview_t * wv)
 				max_pixel = pixel_from_sample(sbuf, max_val);
 
 				if (min_pixel != max_pixel) {
-					aalineColor(sdl.screen, wv->x_ofs + x,
-						    wv->y_ofs + min_pixel,
-						    wv->x_ofs + x,
-						    wv->y_ofs + max_pixel,
-						    color[buf_cnt]);
+					vlineColor(sdl.screen, wv->x_ofs + x,
+						   wv->y_ofs + min_pixel,
+						   wv->y_ofs + max_pixel,
+						   color[buf_cnt]);
 				}
 
 				if (last_min_pixel >= 0) {
@@ -142,7 +141,6 @@ void wview_redraw(wview_t * wv)
 							    min_pixel,
 							    color[buf_cnt]);
 					} else {
-						//assert(max_pixel <= last_min_pixel);
 						aalineColor(sdl.screen,
 							    wv->x_ofs + x - 1,
 							    wv->y_ofs +
