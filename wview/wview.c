@@ -96,15 +96,15 @@ void wview_redraw(wview_t * wv)
 		samplebuf_t *sbuf = &(wv->sbuf[buf_cnt]);
 		float max_val = sbuf->min_val;
 		float min_val = sbuf->max_val;
-		int last_min_pixel = -1;
-		int last_max_pixel = -1;
+		int last_lower = -1;
+		int last_upper = -1;
 		int x = 0;
 
 		// foreach sample
 		for (scnt = 0; scnt < wv->x_cnt; scnt++) {
 			float val =
 			    samplebuf_get_sample(sbuf, wv->x_pos + scnt);
-			int min_pixel, max_pixel;
+			int lower, upper;
 
 			if (val > max_val)
 				max_val = val;
@@ -119,41 +119,44 @@ void wview_redraw(wview_t * wv)
 				//float val = avg / (float)samples_per_pixel;
 				//printf("%f\n",avg/samples_per_pixel);
 
-				min_pixel = pixel_from_sample(sbuf, min_val);
-				max_pixel = pixel_from_sample(sbuf, max_val);
+				// lower pixel >= upper pixel
+				lower = pixel_from_sample(sbuf, min_val);
+				upper = pixel_from_sample(sbuf, max_val);
 
-				if (min_pixel != max_pixel) {
+				if (lower != upper) {
 					vlineColor(sdl.screen, wv->x_ofs + x,
-						   wv->y_ofs + min_pixel,
-						   wv->y_ofs + max_pixel,
+						   wv->y_ofs + lower,
+						   wv->y_ofs + upper,
 						   color[buf_cnt]);
 				}
+				// last valid?
+				if (last_lower >= 0) {
 
-				if (last_min_pixel >= 0) {
-
-					if (min_pixel >= last_max_pixel) {
+					if (lower < last_upper) {
+						// rising
 						aalineColor(sdl.screen,
 							    wv->x_ofs + x - 1,
 							    wv->y_ofs +
-							    last_max_pixel,
+							    last_upper,
 							    wv->x_ofs + x,
 							    wv->y_ofs +
-							    min_pixel,
+							    lower,
 							    color[buf_cnt]);
-					} else {
+					} else if (upper > last_lower) {
+						// falling
 						aalineColor(sdl.screen,
 							    wv->x_ofs + x - 1,
 							    wv->y_ofs +
-							    last_min_pixel,
+							    last_lower,
 							    wv->x_ofs + x,
 							    wv->y_ofs +
-							    max_pixel,
+							    upper,
 							    color[buf_cnt]);
 					}
-				}
+				}	// last valid
 
-				last_min_pixel = min_pixel;
-				last_max_pixel = max_pixel;
+				last_lower = lower;
+				last_upper = upper;
 
 				// TODO: scale y, draw line from last
 				max_val = sbuf->min_val;
