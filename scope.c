@@ -17,6 +17,10 @@
 #include <stdio.h>
 #include <time.h>
 #include <stdlib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include <assert.h>
 
 scope_config_t scope_config;
@@ -88,14 +92,70 @@ int scope_sample_config(unsigned long *tbase, unsigned long *buflen)
 
 void single_done(void);
 
+typedef struct waveinfo_s {
+	unsigned long scnt;
+	unsigned long pre;
+	unsigned long ns;
+	unsigned long ch_config;
+	float scale[2];
+} waveinfo_t;
+
+void save_wave(char *fname, short *d1, short *d2, waveinfo_t * wi)
+{
+	int fd = creat(fname, S_IWUSR | S_IRUSR);
+
+	if (fd < 0)
+		return;
+
+	write(fd, wi, sizeof(waveinfo_t));
+
+	if (d1)
+		write(fd, d1, wi->scnt * sizeof(short));
+
+	if (d2)
+		write(fd, d2, wi->scnt * sizeof(short));
+
+	close(fd);
+}
+
+void save_ascii(char *fname, short *d1, short *d2, waveinfo_t * wi)
+{
+	FILE *fl = fopen(fname, "w");
+	int cnt;
+
+	for (cnt = 0; cnt < wi->scnt; cnt++) {
+		float scaled_a, scaled_b, vala, valb;
+		double tstamp = cnt;
+		if (d1) {
+			vala = d1[cnt];
+			scaled_a = vala * wi->scale[0];	// scale to Volts
+		}
+		if (d2) {
+			valb = d2[cnt];
+			scaled_b = valb * wi->scale[1];	// scale to Volts
+		}
+		tstamp -= wi->pre;
+		tstamp *= wi->ns;
+		tstamp /= 1000000000;
+
+		if ((d1) && (d2))
+			fprintf(fl, "%f %f %f\n", tstamp, scaled_a, scaled_b);
+		else if (d1)
+			fprintf(fl, "%f %f\n", tstamp, scaled_a);
+		else if (d2)
+			fprintf(fl, "%f %f\n", tstamp, scaled_b);
+	}
+
+	fclose(fl);
+}
+
 void PREF4 CallBackBlock(short handle, PICO_STATUS status, void *pParameter)
 {
 	char fname[64];
+	waveinfo_t wi;
 	unsigned long scnt = scope_config.samples;
-	unsigned long pre = 0;
-	FILE *fl;
-	int cnt;
 	short *d1 = NULL, *d2 = NULL;
+	time_t now = time(NULL);
 
 	printf("done\n");
 
@@ -124,38 +184,25 @@ void PREF4 CallBackBlock(short handle, PICO_STATUS status, void *pParameter)
 			NULL) == PICO_OK);
 	}
 
-	sprintf(fname, "%ld.txt", time(NULL));
-	fl = fopen(fname, "w");
+	wi.scnt = scnt;
 
 	if (scope_config.trig_enabled)
-		pre = scope_config.pre_trig;
-	
-	for (cnt = 0; cnt < scnt; cnt++) {
-		float scaled_a, scaled_b, vala, valb;
-		double tstamp = cnt;
-		if (d1) {
-			vala = d1[cnt];
-			scaled_a = vala * scope_config.f_range[0];	// scale to Volts
-			scaled_a /= PS5000_MAX_VALUE;
-		}
-		if (d2) {
-			valb = d2[cnt];
-			scaled_b = valb * scope_config.f_range[1];	// scale to Volts
-			scaled_b /= PS5000_MAX_VALUE;
-		}
-		tstamp -= pre;
-		tstamp *= ns;
-		tstamp /= 1000000000;
+		wi.pre = scope_config.pre_trig;
+	else
+		wi.pre = 0;
 
-		if ((d1) && (d2))
-			fprintf(fl, "%f %f %f\n", tstamp, scaled_a, scaled_b);
-		else if (d1)
-			fprintf(fl, "%f %f\n", tstamp, scaled_a);
-		else if (d2)
-			fprintf(fl, "%f %f\n", tstamp, scaled_b);
-	}
+	wi.ns = ns;
 
-	fclose(fl);
+	wi.scale[0] = scope_config.f_range[0] / PS5000_MAX_VALUE;
+	wi.scale[1] = scope_config.f_range[1] / PS5000_MAX_VALUE;
+
+	wi.ch_config = scope_config.channel_config;
+
+	sprintf(fname, "%ld.txt", now);
+	save_ascii(fname, d1, d2, &wi);
+
+	sprintf(fname, "%ld.wv", now);
+	save_wave(fname, d1, d2, &wi);
 
 	free(d1);
 	free(d2);
