@@ -1,9 +1,11 @@
 #include <stdio.h>
+#include <SDL/SDL_ttf.h>
 #include <assert.h>
 #include "wview.h"
 #include "mmap.h"
 #include "sdl_display.h"
 #include "scrollbar.h"
+#include "wvfile.h"
 
 float samplebuf_get_sample(samplebuf_t * s, unsigned long sample)
 {
@@ -59,8 +61,93 @@ int pixel_from_sample(samplebuf_t * sbuf, float sample)
 	return pixel;
 }
 
+TTF_Font *font = NULL;
+
+void render_text(char *text, int x, int y, SDL_Color color) {
+	SDL_Color bg = {0, 0, 0};
+	SDL_Surface *txt_sf = TTF_RenderText_Shaded(font, text, color, bg);
+	SDL_Rect dst_rect;
+	
+	assert(txt_sf);
+	
+	if(x < 0)
+		x = sdl.screen->w - txt_sf->w + x;
+	
+	if(y < 0)
+		y = sdl.screen->h - txt_sf->h + y;
+	
+	dst_rect.x = x;
+	dst_rect.y = y;
+	
+	dst_rect.h = txt_sf->h;
+	dst_rect.w = txt_sf->w;
+	
+	SDL_BlitSurface(txt_sf, NULL, sdl.screen, &dst_rect);
+	SDL_FreeSurface(txt_sf);
+}
+
 #define H_DIVS		8
 #define V_DIVS		8
+
+#define ABS(x)		((x) >= 0 ? (x) : -(x))
+
+void print_time(char *dst, float ns) {
+	if(ABS(ns) > 1000000)
+		sprintf(dst,"%.3f ms",ns/1000000);
+	else if(ABS(ns) > 1000)
+		sprintf(dst,"%.3f us",ns/1000);
+	else
+		sprintf(dst,"%3.0f ns",ns);
+}
+
+void draw_text(wview_t *wv) {
+	SDL_Color color = {128, 128, 128};
+	char buf[200];
+	float val;
+	
+	// start
+	val = wv->wi->pre;
+	val *= wv->wi->ns;
+	val *= -1;
+	print_time(buf,val);
+	render_text(buf, 2, -1, color);
+	
+	// end
+	val = wv->wi->scnt;
+	val -= wv->wi->pre;
+	val *= wv->wi->ns;
+	print_time(buf,val);
+	render_text(buf, -1, -1, color);
+	
+	// selected start
+	val = wv->x_pos;
+	val -= wv->wi->pre;
+	val *= wv->wi->ns;
+	print_time(buf,val);
+	render_text(buf, wv->x_ofs, wv->y_ofs + wv->target_h, color);
+	
+	// selected end
+	val = wv->x_pos + wv->x_cnt;
+	val -= wv->wi->pre;
+	val *= wv->wi->ns;
+	print_time(buf,val);
+	render_text(buf, -10, wv->y_ofs + wv->target_h, color);
+	
+	// time/div
+	val = wv->x_cnt;
+	val *= wv->wi->ns;
+	val /= H_DIVS;
+	print_time(buf,val);
+	strcat(buf,"/div");
+	render_text(buf, wv->x_ofs + (wv->target_w*4) / 9, wv->y_ofs + wv->target_h, color);
+	
+	// date
+	render_text(ctime(&(wv->wi->capture_time)), wv->x_ofs, 2, color);
+	
+	// capture counter
+	sprintf(buf,"%6ld",wv->wi->capture_cnt);
+	render_text(buf, -10, 2, color);
+}
 
 void wview_redraw(wview_t * wv)
 {
@@ -69,6 +156,8 @@ void wview_redraw(wview_t * wv)
 	unsigned long scnt;
 	int samples_per_pixel = wv->x_cnt / wv->target_w;
 	int buf_cnt;
+	int trigger_done = 0;
+	int x;
 
 	//printf("x_cnt %d\n",wv->x_cnt);
 	//printf("%ld samples/pixel\n",samples_per_pixel);
@@ -91,6 +180,8 @@ void wview_redraw(wview_t * wv)
 		vlineColor(sdl.screen, wv->x_ofs + scnt, y_ofs + 1,
 			   y_ofs + wv->target_h - 2, 0xffffff40);
 
+	draw_text(wv);
+
 	// foreach sample buffer
 	for (buf_cnt = 0; buf_cnt < wv->sbuf_cnt; buf_cnt++) {
 		samplebuf_t *sbuf = &(wv->sbuf[buf_cnt]);
@@ -98,14 +189,15 @@ void wview_redraw(wview_t * wv)
 		float min_val = sbuf->max_val;
 		int last_lower = -1;
 		int last_upper = -1;
-		int x = 0;
+		
+		x = 0;
 
 		// foreach sample
 		for (scnt = 0; scnt < wv->x_cnt; scnt++) {
 			float val =
 			    samplebuf_get_sample(sbuf, wv->x_pos + scnt);
 			int lower, upper;
-
+			
 			if (val > max_val)
 				max_val = val;
 
@@ -116,6 +208,12 @@ void wview_redraw(wview_t * wv)
 
 			if (!((scnt + 1) % samples_per_pixel)) {
 				int did_vline = 0;
+				
+				// trigger
+				if((!trigger_done) && (wv->x_pos + scnt >= wv->wi->pre)) {
+					vlineColor(sdl.screen, wv->x_ofs + x, y_ofs + 1, y_ofs + wv->target_h - 2, 0x80ff8080);
+					trigger_done = 1;
+				}
 
 				//float val = avg / (float)samples_per_pixel;
 				//printf("%f\n",avg/samples_per_pixel);
@@ -173,6 +271,12 @@ void wview_redraw(wview_t * wv)
 		}
 		//printf("x: %d\n", x);
 	}
+	
+	// trigger
+	if(!trigger_done) {
+		vlineColor(sdl.screen, wv->x_ofs + x, y_ofs + 1, y_ofs + wv->target_h - 2, 0x80ff8080);
+		trigger_done = 1;
+	}
 }
 
 void event_loop(wview_t * wv, scrollbar_t * sb)
@@ -211,56 +315,73 @@ void event_loop(wview_t * wv, scrollbar_t * sb)
 	}
 }
 
+/* wview_create
+
+*/
+
+int load_wave(wview_t *wv, char *fname) {
+	waveinfo_t *wi;
+	samplebuf_t *sbuf;
+	mf_t mf;
+	
+	assert(!(map_file(&mf, fname, 0, 0)));
+		
+	wv->mf = mf;
+	
+	wi = (waveinfo_t *)mf.ptr;
+	wv->wi = wi;
+	
+	assert(wi->magic == WVINFO_MAGIC);
+	
+	// skip header
+	mf.ptr += sizeof(waveinfo_t);
+	
+	// 1 or 2 channels?
+	assert(wi->ch_config & 3);
+	if((wi->ch_config & 3) == 3)
+		wv->sbuf_cnt = 2;
+	else
+		wv->sbuf_cnt = 1;
+	
+	assert((sbuf = malloc(sizeof(samplebuf_t) * wv->sbuf_cnt)));
+	wv->sbuf = sbuf;
+	
+	// 1st channel
+	sbuf[0].d = mf.ptr;
+		
+	sbuf[0].y_ofs = 256;	// channel y offset
+	
+	sbuf[0].max_val = 32768;
+	sbuf[0].min_val = -32768;
+	sbuf[0].dtype = INT16;
+	
+	if(wv->sbuf_cnt > 1) {
+		sbuf[1].d = mf.ptr + wi->scnt * 2; // CHANGEME: short -> byte
+		
+		sbuf[1].y_ofs = 512;	// channel y offset
+		
+		sbuf[1].max_val = 32768;
+		sbuf[1].min_val = -32768;
+		sbuf[1].dtype = INT16;
+	}
+	
+	return 0;
+}
+
+// wview_destroy - unmap file, free
+
 int main(int argc, char **argv)
 {
-	samplebuf_t sbuf[2];
 	wview_t wview;
 	scrollbar_t *sb;
-	mf_t mf[2];
 
 	assert(argc > 1);
-	assert(!(map_file(mf, argv[1], 0, 0)));
+	
+	load_wave(&wview, argv[1]);
 
-	// 1 channel for now
-	wview.sbuf = sbuf;
-	wview.sbuf_cnt = 1;
-
-	if (argc > 2) {
-		if (!((map_file(mf + 1, argv[2], 0, 0))))
-			wview.sbuf_cnt = 2;
-	}
-
-	sbuf[0].y_ofs = 256;	// channel y offset
-	sbuf[1].y_ofs = 512;	// channel y offset
-
-	// channel min/max
-	sbuf[0].min_val = 0;
-	sbuf[0].max_val = 255;
-
-	// channel min/max
-	sbuf[1].min_val = 0;
-	sbuf[1].max_val = 255;
-
-	// uint8
-	sbuf[0].dtype = UINT8;
-	sbuf[0].d = mf[0].ptr + 164;
-
-	// uint8
-	sbuf[1].dtype = UINT8;
-	sbuf[1].d = mf[1].ptr + 164;
-
-	wview.samples = mf[0].len - 164;
-
-	///// ugly test
-	if (!(strcmp(argv[1] + strlen(argv[1]) - 3, ".wv"))) {
-		sbuf[0].max_val = 32768;
-		sbuf[0].min_val = -32768;
-		sbuf[0].dtype = INT16;
-		wview.samples /= 2;
-	}
 	// x zoom: min (show all samples)
 	wview.x_pos = 0;
-	wview.x_cnt = wview.samples;
+	wview.x_cnt = wview.wi->scnt;
 
 	// main window
 	wview.x_ofs = 10;
@@ -268,22 +389,22 @@ int main(int argc, char **argv)
 	wview.target_w = 1024;
 	wview.target_h = 512;
 
-	printf("%ld samples, target_w %ld\n", wview.samples, wview.target_w);
+	//printf("%ld samples, target_w %ld\n", wview.samples, wview.target_w);
 
 	sdl_init(wview.target_w + wview.x_ofs * 2,
-		 wview.target_h + wview.y_ofs * 2 + 20);
+		 wview.target_h + wview.y_ofs * 2 + 50);
+
+	assert(!TTF_Init());
+
+	assert((font = TTF_OpenFont("/usr/share/fonts/truetype/ttf-dejavu/DejaVuSansMono.ttf", 12)));
 
 	assert((sb =
 		scrollbar_create(sdl.screen, 0,
-				 wview.target_h + wview.y_ofs * 2 + 5,
+				 wview.target_h + wview.y_ofs * 2 + 15,
 				 wview.target_w + 20, 12, wview.target_w,
-				 wview.samples)));
+				 wview.wi->scnt)));
 
 	event_loop(&wview, sb);
-
-	unmap_file(mf);
-	if (wview.sbuf_cnt == 2)
-		unmap_file(mf + 1);
 
 	scrollbar_destroy(sb);
 

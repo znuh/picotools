@@ -14,6 +14,8 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 #include "scope.h"
+#include "wview/wvfile.h"
+
 #include <stdio.h>
 #include <time.h>
 #include <stdlib.h>
@@ -21,7 +23,11 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <stdlib.h>
+#include <string.h>
 #include <assert.h>
+
+static unsigned long capture_cnt = 0;
 
 scope_config_t scope_config;
 
@@ -92,14 +98,6 @@ int scope_sample_config(unsigned long *tbase, unsigned long *buflen)
 
 void single_done(void);
 
-typedef struct waveinfo_s {
-	unsigned long scnt;
-	unsigned long pre;
-	unsigned long ns;
-	unsigned long ch_config;
-	float scale[2];
-} waveinfo_t;
-
 void save_wave(char *fname, short *d1, short *d2, waveinfo_t * wi)
 {
 	int fd = creat(fname, S_IWUSR | S_IRUSR);
@@ -152,6 +150,7 @@ void save_ascii(char *fname, short *d1, short *d2, waveinfo_t * wi)
 void PREF4 CallBackBlock(short handle, PICO_STATUS status, void *pParameter)
 {
 	char fname[64];
+	char buf[128] = "./wview ";
 	waveinfo_t wi;
 	unsigned long scnt = scope_config.samples;
 	short *d1 = NULL, *d2 = NULL;
@@ -184,6 +183,10 @@ void PREF4 CallBackBlock(short handle, PICO_STATUS status, void *pParameter)
 			NULL) == PICO_OK);
 	}
 
+	wi.magic = WVINFO_MAGIC;
+	wi.capture_time = now;
+	wi.capture_cnt = ++capture_cnt;
+	
 	wi.scnt = scnt;
 
 	if (scope_config.trig_enabled)
@@ -198,11 +201,16 @@ void PREF4 CallBackBlock(short handle, PICO_STATUS status, void *pParameter)
 
 	wi.ch_config = scope_config.channel_config;
 
+	/*
 	sprintf(fname, "%ld.txt", now);
 	save_ascii(fname, d1, d2, &wi);
+	*/
 
 	sprintf(fname, "%ld.wv", now);
 	save_wave(fname, d1, d2, &wi);
+	
+	strcat(buf,fname);
+	system(buf);
 
 	free(d1);
 	free(d2);

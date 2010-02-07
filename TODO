@@ -4,8 +4,9 @@
 	+ 2 channels
 	+ grid
 	+ better zoom out
-	- time offset
-	- show trigger point
+	+ time offset
+	+ show trigger point
+	- show volt/div
 	- live display
 	
     GtkUI:

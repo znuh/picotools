@@ -6,7 +6,7 @@
 
 struct sdl_ctx sdl;
 
-mf_t font;
+//mf_t font;
 
 int sdl_init(int w, int h)
 {
@@ -33,10 +33,10 @@ int sdl_init(int w, int h)
 //      SDL_SetAlpha(sdl.screen, SDL_SRCALPHA, 0);
 
 	SDL_WM_SetCaption("wview", "wview");
-
+/*
 	assert(!(map_file(&font, "Fonts/8x13.fnt", 0, 0)));
 	gfxPrimitivesSetFont(font.ptr, 8, 13);
-
+*/
 	return 0;
 }
 
@@ -48,5 +48,5 @@ void sdl_flip(void)
 
 void sdl_destroy(void)
 {
-	unmap_file(&font);
+//	unmap_file(&font);
 }

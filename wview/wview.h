@@ -3,6 +3,9 @@
 
 #include <stdint.h>
 
+#include "mmap.h"
+#include "wvfile.h"
+
 typedef enum {
 	INT8,
 	UINT8,
@@ -29,13 +32,18 @@ typedef struct samplebuf_s {
 } samplebuf_t;
 
 typedef struct wview_s {
+	mf_t mf;
+
 	samplebuf_t *sbuf;
 	int sbuf_cnt;
-	unsigned long samples;
 
-	int timebase;
+	waveinfo_t *wi;
+	
+	//unsigned long samples;
 
-	unsigned long trigger_ofs;
+	//unsigned long timebase;
+
+	//unsigned long trigger_ofs;
 
 	unsigned long x_pos, y_pos;
 	unsigned long x_cnt, y_cnt;
