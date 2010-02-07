@@ -6,7 +6,7 @@
 	+ better zoom out
 	+ time offset
 	+ show trigger point
-	- show volt/div
+	+ show volt/div
 	- live display
 	
     GtkUI:
@@ -20,6 +20,7 @@
 
 0.2:
     wview:
+	- y zooming
 	- zoom in with mouse rectangle
 	- step-wise scrolling with sb. clicks / mousewheel
 	- waveform zoom out draw n times with alpha
