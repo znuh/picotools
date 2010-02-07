@@ -26,6 +26,14 @@ extern SCOPE_TYPE_t scope_type;
 int main(int argc, char **argv)
 {
 
+	// http://tadeboro.blogspot.com/2009/06/multi-threaded-gtk-applications.html
+	if (!(g_thread_supported()))
+		g_thread_init(NULL);
+
+	gdk_threads_init();
+
+	gdk_threads_enter();
+
 	gtk_init(&argc, &argv);
 	glade_init();
 
@@ -69,6 +77,8 @@ int main(int argc, char **argv)
 	init();
 
 	gtk_main();
+
+	gdk_threads_leave();
 
 	return 0;
 }

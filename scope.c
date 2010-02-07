@@ -97,7 +97,7 @@ int scope_sample_config(unsigned long *tbase, unsigned long *buflen)
 	return ((res == PICO_OK) ? 0 : -1);
 }
 
-void single_done(void);
+void scope_done(void);
 
 void save_wave(char *fname, short *d1, short *d2, waveinfo_t * wi)
 {
@@ -178,6 +178,14 @@ void save_ascii(char *fname, short *d1, short *d2, waveinfo_t * wi)
 	fclose(fl);
 }
 
+void scope_stop(void)
+{
+	if (!scope_type)
+		return;
+	//printf("stop\n");
+	ps5000Stop(handle);
+}
+
 void PREF4 CallBackBlock(short handle, PICO_STATUS status, void *pParameter)
 {
 	char fname[64];
@@ -187,43 +195,39 @@ void PREF4 CallBackBlock(short handle, PICO_STATUS status, void *pParameter)
 	short *d1 = NULL, *d2 = NULL;
 	time_t now = time(NULL);
 
-	ps5000Stop(handle);
+	// notify gui
+	scope_done();
+
+	scope_stop();
 
 	printf("done scnt %ld status %ld\n", scnt, status);
-
-	// notify gui (gui will call scope_stop)
-	// TODO: my feelings tell me there could be some threading issues?
-	single_done();
-
-	fprintf(stderr, "get 1");
 
 	// 1st channel active
 	if ((scope_config.channel_config >> 0) & 1) {
 		assert((d1 = malloc(scope_config.samples * sizeof(short))));
-		fprintf(stderr, "set dbuffer\n");
 		assert(ps5000SetDataBuffer
 		       (handle, PS5000_CHANNEL_A, d1,
 			scope_config.samples) == PICO_OK);
-		fprintf(stderr, "get vals\n");
-		assert(ps5000GetValues
-		       (handle, 0, &scnt, 1, RATIO_MODE_NONE, 0,
-			NULL) == PICO_OK);
 	}
-
-	fprintf(stderr, "get 2");
-
 	// 2nd channel active
 	if ((scope_config.channel_config >> 1) & 1) {
 		assert((d2 = malloc(scope_config.samples * sizeof(short))));
 		assert(ps5000SetDataBuffer
 		       (handle, PS5000_CHANNEL_B, d2,
 			scope_config.samples) == PICO_OK);
+	}
+
+	if (d1) {
 		assert(ps5000GetValues
 		       (handle, 0, &scnt, 1, RATIO_MODE_NONE, 0,
 			NULL) == PICO_OK);
 	}
 
-	fprintf(stderr, "store\n");
+	if (d2) {
+		assert(ps5000GetValues
+		       (handle, 0, &scnt, 1, RATIO_MODE_NONE, 0,
+			NULL) == PICO_OK);
+	}
 
 	wi.magic = WVINFO_MAGIC;
 	wi.capture_time = now;
@@ -255,8 +259,6 @@ void PREF4 CallBackBlock(short handle, PICO_STATUS status, void *pParameter)
 	strcat(buf, " &");
 	system(buf);
 
-	//fprintf(stderr,"free %p %p\n",d1, d2);
-
 	if (d1)
 		free(d1);
 	if (d2)
@@ -284,13 +286,6 @@ int scope_run(int single)
 	printf("run: %ld (%s)\n", res, (res == PICO_OK) ? "ok" : "FAIL");
 
 	return ((res == PICO_OK) ? 0 : -1);
-}
-
-void scope_stop(void)
-{
-	if (!scope_type)
-		return;
-	ps5000Stop(handle);
 }
 
 int scope_trigger_config(void)

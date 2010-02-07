@@ -14,8 +14,9 @@
 	+ initial values
 	+ adjust samplebuffer for GS / 2ch.
 	+ CSV: fix trigger time=0
-	- fix run/auto buttons
-	- fix 2 channels bug
+	+ fix run/auto buttons
+	+ fix 2 channels bug
+	- auto mode
 
 0.2:
     wview:

@@ -25,6 +25,8 @@ GtkLabel *trig_pre_lbl;
 GtkLabel *trig_post_lbl;
 GtkLabel *time_lbl;
 
+GtkProgressBar *progress;
+
 GtkToggleButton *single_btn;
 
 guint reconf_timer = -1;
@@ -57,9 +59,14 @@ void format_time(char *buf, float time_ns)
 		sprintf(buf, "%.3f s", time_ns);
 }
 
-void single_done(void)
+void scope_done(void)
 {
+	// called from scope thread!
+	gdk_threads_enter();
+	// TODO: auto mode
 	gtk_toggle_button_set_active(single_btn, 0);
+	gtk_progress_bar_pulse(progress);
+	gdk_threads_leave();
 }
 
 /***************** srate/buf reconf timer **************************/
@@ -104,6 +111,10 @@ void on_single_btn_toggled(GtkWidget * w, gpointer priv)
 		res = scope_run(1);
 	else
 		scope_stop();
+
+	if (res)
+		gtk_toggle_button_set_active(single_btn, 0);
+	// TODO: auto
 }
 
 void on_auto_btn_toggled(GtkWidget * w, gpointer priv)
@@ -396,6 +407,9 @@ void on_trig_edge_cbox_changed(GtkWidget * w, gpointer priv)
 void init(void)
 {
 	GtkWidget *w;
+
+	progress =
+	    GTK_PROGRESS_BAR(glade_xml_get_widget(glade, "main_progress"));
 
 	// set initial values
 
