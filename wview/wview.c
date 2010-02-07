@@ -171,7 +171,12 @@ void draw_text(wview_t * wv)
 	color.r = 0x80;
 	color.g = 0x80;
 	color.b = 0xff;
-	strcat(buf, "/div");
+	strcat(buf, "/div ");
+	if (wv->wi->ch_config & 4)
+		strcat(buf, "DC");
+	else
+		strcat(buf, "AC");
+
 	render_text(buf, wv->x_ofs + 400, 2, color);
 
 	// V/div ch 2
@@ -181,7 +186,11 @@ void draw_text(wview_t * wv)
 		color.r = 0xff;
 		color.g = 0x80;
 		color.b = 0x80;
-		strcat(buf, "/div");
+		strcat(buf, "/div ");
+		if (wv->wi->ch_config & 8)
+			strcat(buf, "DC");
+		else
+			strcat(buf, "AC");
 		render_text(buf, wv->x_ofs + 600, 2, color);
 	}
 }
@@ -226,6 +235,9 @@ void wview_redraw(wview_t * wv)
 		float min_val = sbuf->max_val;
 		int last_lower = -1;
 		int last_upper = -1;
+
+		hlineColor(sdl.screen, 0, wv->x_ofs - 1, y_ofs + sbuf->y_ofs,
+			   color[buf_cnt]);
 
 		x = 0;
 
