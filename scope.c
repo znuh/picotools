@@ -242,8 +242,8 @@ void PREF4 CallBackBlock(short handle, PICO_STATUS status, void *pParameter)
 
 	wi.ns = ns;
 
-	wi.scale[0] = scope_config.f_range[0] / PS5000_MAX_VALUE;
-	wi.scale[1] = scope_config.f_range[1] / PS5000_MAX_VALUE;
+	wi.scale[0] = scope_config.f_range[0] / (PS5000_MAX_VALUE>>8);
+	wi.scale[1] = scope_config.f_range[1] / (PS5000_MAX_VALUE>>8);
 
 	wi.ch_config = scope_config.channel_config;
 
