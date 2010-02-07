@@ -150,7 +150,7 @@ void save_ascii(char *fname, short *d1, short *d2, waveinfo_t * wi)
 void PREF4 CallBackBlock(short handle, PICO_STATUS status, void *pParameter)
 {
 	char fname[64];
-	char buf[128] = "./wview ";
+	char buf[128] = "./wview/wview ";
 	waveinfo_t wi;
 	unsigned long scnt = scope_config.samples;
 	short *d1 = NULL, *d2 = NULL;
@@ -186,7 +186,7 @@ void PREF4 CallBackBlock(short handle, PICO_STATUS status, void *pParameter)
 	wi.magic = WVINFO_MAGIC;
 	wi.capture_time = now;
 	wi.capture_cnt = ++capture_cnt;
-	
+
 	wi.scnt = scnt;
 
 	if (scope_config.trig_enabled)
@@ -202,14 +202,14 @@ void PREF4 CallBackBlock(short handle, PICO_STATUS status, void *pParameter)
 	wi.ch_config = scope_config.channel_config;
 
 	/*
-	sprintf(fname, "%ld.txt", now);
-	save_ascii(fname, d1, d2, &wi);
-	*/
+	   sprintf(fname, "%ld.txt", now);
+	   save_ascii(fname, d1, d2, &wi);
+	 */
 
 	sprintf(fname, "%ld.wv", now);
 	save_wave(fname, d1, d2, &wi);
-	
-	strcat(buf,fname);
+
+	strcat(buf, fname);
 	system(buf);
 
 	free(d1);

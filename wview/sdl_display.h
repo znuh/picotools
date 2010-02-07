@@ -10,7 +10,5 @@ struct sdl_ctx {
 };
 
 int sdl_init(int w, int h);
-void sdl_destroy(void);
-void sdl_flip(void);
 
 #endif

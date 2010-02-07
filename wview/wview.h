@@ -38,7 +38,7 @@ typedef struct wview_s {
 	int sbuf_cnt;
 
 	waveinfo_t *wi;
-	
+
 	//unsigned long samples;
 
 	//unsigned long timebase;
