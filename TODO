@@ -15,6 +15,7 @@
 	+ adjust samplebuffer for GS / 2ch.
 	+ CSV: fix trigger time=0
 	- fix run/auto buttons
+	- fix 2 channels bug
 
 0.2:
     wview:
@@ -24,8 +25,9 @@
 	- 2 scrollbars for large buffers
 	- cursors
 	- display more values (time, dV, etc.)
-	- settings cfgfile
+	- printing
     GtkUI:
 	- use more scope buffers if sbuf small enough
+	- settings cfgfile
 	- AWG support
 

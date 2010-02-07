@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/mman.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -100,20 +101,50 @@ void single_done(void);
 
 void save_wave(char *fname, short *d1, short *d2, waveinfo_t * wi)
 {
-	int fd = creat(fname, S_IWUSR | S_IRUSR);
+	int fd = open(fname, O_CREAT | O_RDWR, S_IWUSR | S_IRUSR);
+	int len = sizeof(waveinfo_t) + wi->scnt;
+	uint8_t *mapped, *ptr, *d;
+	int cnt;
 
 	if (fd < 0)
 		return;
 
-	write(fd, wi, sizeof(waveinfo_t));
+	if ((d1) && (d2))
+		len += wi->scnt;
 
-	if (d1)
-		write(fd, d1, wi->scnt * sizeof(short));
+	assert(!(ftruncate(fd, len)));
 
-	if (d2)
-		write(fd, d2, wi->scnt * sizeof(short));
+	assert((mapped =
+		mmap(NULL, len, PROT_WRITE, MAP_SHARED, fd, 0)) != MAP_FAILED);
 
+	memcpy(mapped, wi, sizeof(waveinfo_t));
+
+	ptr = mapped + sizeof(waveinfo_t);
+
+	// compress to 8 bit
+	if (d1) {
+		d = (uint8_t *) d1;
+		d++;
+		for (cnt = 0; cnt < wi->scnt; cnt++) {
+			*ptr = *d;
+			ptr++;
+			d += 2;
+		}
+	}
+
+	if (d2) {
+		d = (uint8_t *) d2;
+		d++;
+		for (cnt = 0; cnt < wi->scnt; cnt++) {
+			*ptr = *d;
+			ptr++;
+			d += 2;
+		}
+	}
+
+	munmap(mapped, len);
 	close(fd);
+
 }
 
 void save_ascii(char *fname, short *d1, short *d2, waveinfo_t * wi)
@@ -156,22 +187,31 @@ void PREF4 CallBackBlock(short handle, PICO_STATUS status, void *pParameter)
 	short *d1 = NULL, *d2 = NULL;
 	time_t now = time(NULL);
 
-	printf("done\n");
+	ps5000Stop(handle);
+
+	printf("done scnt %ld status %ld\n", scnt, status);
 
 	// notify gui (gui will call scope_stop)
 	// TODO: my feelings tell me there could be some threading issues?
 	single_done();
 
+	fprintf(stderr, "get 1");
+
 	// 1st channel active
 	if ((scope_config.channel_config >> 0) & 1) {
 		assert((d1 = malloc(scope_config.samples * sizeof(short))));
+		fprintf(stderr, "set dbuffer\n");
 		assert(ps5000SetDataBuffer
 		       (handle, PS5000_CHANNEL_A, d1,
 			scope_config.samples) == PICO_OK);
+		fprintf(stderr, "get vals\n");
 		assert(ps5000GetValues
 		       (handle, 0, &scnt, 1, RATIO_MODE_NONE, 0,
 			NULL) == PICO_OK);
 	}
+
+	fprintf(stderr, "get 2");
+
 	// 2nd channel active
 	if ((scope_config.channel_config >> 1) & 1) {
 		assert((d2 = malloc(scope_config.samples * sizeof(short))));
@@ -182,6 +222,8 @@ void PREF4 CallBackBlock(short handle, PICO_STATUS status, void *pParameter)
 		       (handle, 0, &scnt, 1, RATIO_MODE_NONE, 0,
 			NULL) == PICO_OK);
 	}
+
+	fprintf(stderr, "store\n");
 
 	wi.magic = WVINFO_MAGIC;
 	wi.capture_time = now;
@@ -210,10 +252,15 @@ void PREF4 CallBackBlock(short handle, PICO_STATUS status, void *pParameter)
 	save_wave(fname, d1, d2, &wi);
 
 	strcat(buf, fname);
+	strcat(buf, " &");
 	system(buf);
 
-	free(d1);
-	free(d2);
+	//fprintf(stderr,"free %p %p\n",d1, d2);
+
+	if (d1)
+		free(d1);
+	if (d2)
+		free(d2);
 }
 
 int scope_run(int single)
@@ -229,8 +276,7 @@ int scope_run(int single)
 		post += pre;
 		pre = 0;
 	}
-
-	printf("%ld %ld\n", pre, post);
+	//printf("%ld %ld\n", pre, post);
 	res =
 	    ps5000RunBlock(handle, pre, post, scope_config.timebase, 0, NULL, 0,
 			   CallBackBlock, NULL);

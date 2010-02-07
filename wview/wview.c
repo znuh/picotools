@@ -51,6 +51,9 @@ int pixel_from_sample(samplebuf_t * sbuf, float sample)
 	float val = sample;
 	int pixel;
 
+	assert(val >= sbuf->min_val);
+	assert(val <= sbuf->max_val);
+
 	val *= 256;		//(wv->y_cnt);
 	val /= (sbuf->max_val - sbuf->min_val);
 	val = sbuf->y_ofs - val;
@@ -364,20 +367,20 @@ int load_wave(wview_t * wv, char *fname)
 	// 1st channel
 	sbuf[0].d = mf.ptr;
 
-	sbuf[0].y_ofs = 256;	// channel y offset
+	sbuf[0].y_ofs = 128;	// channel y offset
 
-	sbuf[0].max_val = 32768;
-	sbuf[0].min_val = -32768;
-	sbuf[0].dtype = INT16;
+	sbuf[0].max_val = 127;
+	sbuf[0].min_val = -127;
+	sbuf[0].dtype = INT8;
 
 	if (wv->sbuf_cnt > 1) {
-		sbuf[1].d = mf.ptr + wi->scnt * 2;	// CHANGEME: short -> byte
+		sbuf[1].d = mf.ptr + wi->scnt;	// * 2;  // CHANGEME: short -> byte
 
-		sbuf[1].y_ofs = 512;	// channel y offset
+		sbuf[1].y_ofs = 256 + 128;	// channel y offset
 
-		sbuf[1].max_val = 32768;
-		sbuf[1].min_val = -32768;
-		sbuf[1].dtype = INT16;
+		sbuf[1].max_val = 127;
+		sbuf[1].min_val = -127;
+		sbuf[1].dtype = INT8;
 	}
 
 	return 0;
