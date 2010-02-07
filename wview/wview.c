@@ -105,6 +105,14 @@ void print_time(char *dst, float ns)
 		sprintf(dst, "%3.0f ns", ns);
 }
 
+void print_volt(char *dst, float volt)
+{
+	if (volt >= 1)
+		sprintf(dst, "%.3f V", volt);
+	else
+		sprintf(dst, "%.3f mV", volt * 1000);
+}
+
 void draw_text(wview_t * wv)
 {
 	SDL_Color color = { 128, 128, 128 };
@@ -156,6 +164,26 @@ void draw_text(wview_t * wv)
 	// capture counter
 	sprintf(buf, "%6ld", wv->wi->capture_cnt);
 	render_text(buf, -10, 2, color);
+
+	// V/div ch 1
+	val = ((float)wv->target_h * wv->wi->scale[0]) / (float)V_DIVS;
+	print_volt(buf, val);
+	color.r = 0x80;
+	color.g = 0x80;
+	color.b = 0xff;
+	strcat(buf, "/div");
+	render_text(buf, wv->x_ofs + 400, 2, color);
+
+	// V/div ch 2
+	if (wv->wi->scnt > 1) {
+		val = ((float)wv->target_h * wv->wi->scale[1]) / (float)V_DIVS;
+		print_volt(buf, val);
+		color.r = 0xff;
+		color.g = 0x80;
+		color.b = 0x80;
+		strcat(buf, "/div");
+		render_text(buf, wv->x_ofs + 600, 2, color);
+	}
 }
 
 void wview_redraw(wview_t * wv)
