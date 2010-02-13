@@ -46,27 +46,22 @@ int wave_size = 0;
 
 wview_t *wv = NULL;
 
-void wview_thread(void)
-{
-	assert((wv = wview_init(1024, 512)));
-
-	// TODO: tell the parent wview is ready
-
-	event_loop(wv);
-
-}
-
 // TODO: cleanup code - seperate SDL/GTK/scope parts
 #include <gtk/gtk.h>
 #include <SDL/SDL.h>
 
-void notify_viewer(uint8_t * ptr)
-{
-	SDL_Event ev;
+GMutex *mutex = NULL;
+GCond *cond = NULL;
 
-	ev.type = SDL_USEREVENT;
-	ev.user.data1 = ptr;
-	SDL_PushEvent(&ev);
+void wview_thread(void)
+{
+	assert((wv = wview_init(1024, 512)));
+
+	// tell the parent wview is ready
+	g_cond_broadcast(cond);
+
+	event_loop(wv);
+
 }
 
 int viewer_init(void)
@@ -79,9 +74,16 @@ int viewer_init(void)
 
 	assert((waves = malloc(wave_size * 3)));
 
+	mutex = g_mutex_new();
+	cond = g_cond_new();
+
+	g_mutex_lock(mutex);
+
 	g_thread_create((GThreadFunc) wview_thread, NULL, FALSE, NULL);
 
-	// TODO: wait for wview to come up
+	// wait for wview to come up
+	g_cond_wait(cond, mutex);
+	g_mutex_unlock(mutex);
 
 	return 0;
 }
@@ -96,6 +98,15 @@ void viewer_destroy(void)
 		free(waves);
 		waves = NULL;
 	}
+}
+
+void notify_viewer(uint8_t * ptr)
+{
+	SDL_Event ev;
+
+	ev.type = SDL_USEREVENT;
+	ev.user.data1 = ptr;
+	SDL_PushEvent(&ev);
 }
 
 int scope_open(int dryrun)
