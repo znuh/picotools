@@ -55,10 +55,10 @@ GCond *cond = NULL;
 
 void wview_thread(void)
 {
+	g_mutex_lock(mutex);
 	assert((wv = wview_init(1024, 512)));
 
 	// tell the parent wview is ready
-	g_mutex_lock(mutex);
 	g_cond_broadcast(cond);
 	g_mutex_unlock(mutex);
 
@@ -87,7 +87,8 @@ int viewer_init(void)
 	    g_thread_create((GThreadFunc) wview_thread, NULL, TRUE, NULL);
 
 	// wait for wview to come up
-	g_cond_wait(cond, mutex);
+	while(!(wv))
+		g_cond_wait(cond, mutex);
 	g_mutex_unlock(mutex);
 
 	return 0;

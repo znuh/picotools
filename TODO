@@ -8,6 +8,7 @@
 	+ show trigger point
 	+ show volt/div
 	- live display
+	- save file
 	
     GtkUI:
 	+ PS5203 suport
@@ -32,4 +33,5 @@
 	- use more scope buffers if sbuf small enough
 	- settings cfgfile
 	- AWG support
+	- lib mode for pscope
 
