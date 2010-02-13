@@ -196,18 +196,10 @@ void draw_text(wview_t * wv)
 	}
 }
 
-void wview_redraw(wview_t * wv)
+void draw_grid(wview_t * wv)
 {
-	uint32_t color[] = { 0x8080ffff, 0xff8080ff };
 	int y_ofs = wv->y_ofs;
-	unsigned long scnt;
-	int samples_per_pixel = wv->x_cnt / wv->target_w;
-	int buf_cnt;
-	int trigger_done = 0;
-	int x;
-
-	//printf("x_cnt %d\n",wv->x_cnt);
-	//printf("%ld samples/pixel\n",samples_per_pixel);
+	int scnt;
 
 	// frame
 	rectangleColor(sdl.screen, wv->x_ofs, y_ofs,
@@ -226,7 +218,22 @@ void wview_redraw(wview_t * wv)
 	     scnt += wv->target_w / H_DIVS)
 		vlineColor(sdl.screen, wv->x_ofs + scnt, y_ofs + 1,
 			   y_ofs + wv->target_h - 2, 0xffffff40);
+}
 
+void wview_redraw(wview_t * wv)
+{
+	uint32_t color[] = { 0x8080ffff, 0xff8080ff };
+	int y_ofs = wv->y_ofs;
+	unsigned long scnt;
+	int samples_per_pixel = wv->x_cnt / wv->target_w;
+	int buf_cnt;
+	int trigger_done = 0;
+	int x;
+
+	//printf("x_cnt %d\n",wv->x_cnt);
+	//printf("%ld samples/pixel\n",samples_per_pixel);
+
+	draw_grid(wv);
 	draw_text(wv);
 
 	// foreach sample buffer
@@ -367,10 +374,15 @@ int load_wave(wview_t * wv, uint8_t * ptr)
 
 void event_loop(wview_t * wv)
 {
+	//SDL_Color fg = { 0x80, 0x80, 0x80 };
 	int redraw = SB_VALS_CHANGED;
 	int initialized = 0;
 
 	assert(sb);
+
+	//render_text("waiting for data", wv->target_w/3, wv->target_h/2, fg);
+	draw_grid(wv);
+	SDL_Flip(sdl.screen);
 
 	while (1) {
 		SDL_Event event;
