@@ -87,7 +87,7 @@ int viewer_init(void)
 	    g_thread_create((GThreadFunc) wview_thread, NULL, TRUE, NULL);
 
 	// wait for wview to come up
-	while(!(wv))
+	while (!(wv))
 		g_cond_wait(cond, mutex);
 	g_mutex_unlock(mutex);
 
@@ -316,30 +316,19 @@ void PREF4 CallBackBlock(short handle, PICO_STATUS status, void *pParameter)
 
 	// 1st channel active
 	if ((channels >> 0) & 1) {
-		//assert((d1 = malloc(scope_config.samples * sizeof(short))));
 		assert(ps5000SetDataBuffer
 		       (handle, PS5000_CHANNEL_A, d1,
 			scope_config.samples) == PICO_OK);
 	}
 	// 2nd channel active
 	if ((channels >> 1) & 1) {
-		//assert((d2 = malloc(scope_config.samples * sizeof(short))));
 		assert(ps5000SetDataBuffer
 		       (handle, PS5000_CHANNEL_B, d2,
 			scope_config.samples) == PICO_OK);
 	}
 
-	if (d1) {
-		assert(ps5000GetValues
-		       (handle, 0, &scnt, 1, RATIO_MODE_NONE, 0,
-			NULL) == PICO_OK);
-	}
-
-	if (d2) {
-		assert(ps5000GetValues
-		       (handle, 0, &scnt, 1, RATIO_MODE_NONE, 0,
-			NULL) == PICO_OK);
-	}
+	assert(ps5000GetValues
+	       (handle, 0, &scnt, 1, RATIO_MODE_NONE, 0, NULL) == PICO_OK);
 
 	wi.magic = WVINFO_MAGIC;
 	wi.capture_time = now;
@@ -363,22 +352,17 @@ void PREF4 CallBackBlock(short handle, PICO_STATUS status, void *pParameter)
 	   sprintf(fname, "%ld.txt", now);
 	   save_ascii(fname, d1, d2, &wi);
 	 */
-/*
-	sprintf(fname, "%ld.wv", now);
-	save_wave(fname, d1, d2, &wi);
+	/*
+	   sprintf(fname, "%ld.wv", now);
+	   save_wave(fname, d1, d2, &wi);
 
-	strcat(buf, fname);
-	strcat(buf, " &");
-	system(buf);
-	*/
+	   strcat(buf, fname);
+	   strcat(buf, " &");
+	   system(buf);
+	 */
 	copy_wave(waves, d1, d2, &wi);	// TODO: triplebuffer w/ locking
 	notify_viewer(waves);
-/*
-	if (d1)
-		free(d1);
-	if (d2)
-		free(d2);
-		*/
+
 	if (run_again)
 		g_thread_create((GThreadFunc) rerun_thread, NULL, FALSE, NULL);
 
