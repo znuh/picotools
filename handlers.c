@@ -117,7 +117,7 @@ void schedule_reconfig(void)
 void on_single_btn_toggled(GtkWidget * w, gpointer priv)
 {
 	int val = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(w));
-	int res;
+	int res = 0;
 
 	if (val)
 		res = scope_run(1);

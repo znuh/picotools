@@ -255,25 +255,28 @@ void save_ascii(char *fname, short *d1, short *d2, waveinfo_t * wi)
 	int cnt;
 
 	for (cnt = 0; cnt < wi->scnt; cnt++) {
-		float scaled_a, scaled_b, vala, valb;
+		float scaled_a = 0.0, scaled_b = 0.0, vala, valb;
 		double tstamp = cnt;
-		if (d1) {
+
+		if (wi->ch_config & 1) {
 			vala = d1[cnt];
 			scaled_a = vala * wi->scale[0];	// scale to Volts
 		}
-		if (d2) {
+
+		if (wi->ch_config & 2) {
 			valb = d2[cnt];
 			scaled_b = valb * wi->scale[1];	// scale to Volts
 		}
+
 		tstamp -= wi->pre;
 		tstamp *= wi->ns;
 		tstamp /= 1000000000;
 
-		if ((d1) && (d2))
+		if ((wi->ch_config & 3) == 3)
 			fprintf(fl, "%f %f %f\n", tstamp, scaled_a, scaled_b);
-		else if (d1)
+		else if ((wi->ch_config & 3) == 1)
 			fprintf(fl, "%f %f\n", tstamp, scaled_a);
-		else if (d2)
+		else if ((wi->ch_config & 3) == 2)
 			fprintf(fl, "%f %f\n", tstamp, scaled_b);
 	}
 
@@ -290,7 +293,7 @@ void scope_stop(void)
 
 void rerun_thread(void)
 {
-	usleep(1000);		//TODO: fixme - use auto mode
+	//usleep(1000);         //TODO: fixme - use auto mode
 	scope_run(0);
 }
 
@@ -466,6 +469,7 @@ int scope_trigger_config(void)
 		else if (scope_config.trig_enabled) {
 			printf("IARGH!?!?!\n");
 		}
+		//printf("%d %d %d\n",dir[0],dir[1],dir[2]);
 
 		res =
 		    ps5000SetTriggerChannelDirections(handle, dir[0], dir[1],

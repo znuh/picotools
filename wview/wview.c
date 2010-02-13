@@ -228,7 +228,7 @@ void wview_redraw(wview_t * wv)
 	int samples_per_pixel = wv->x_cnt / wv->target_w;
 	int buf_cnt;
 	int trigger_done = 0;
-	int x;
+	int x = 0;
 
 	//printf("x_cnt %d\n",wv->x_cnt);
 	//printf("%ld samples/pixel\n",samples_per_pixel);
@@ -352,8 +352,11 @@ int load_wave(wview_t * wv, uint8_t * ptr)
 
 	assert(wi->magic == WVINFO_MAGIC);
 
-	sb->len = sb->max_len = wi->scnt;
-
+	// new max len
+	if (sb->max_len != wi->scnt) {
+		sb->pos = 0;
+		sb->len = sb->max_len = wi->scnt;
+	}
 	// skip header
 	ptr += sizeof(waveinfo_t);
 
