@@ -32,7 +32,7 @@ typedef struct samplebuf_s {
 } samplebuf_t;
 
 typedef struct wview_s {
-	mf_t mf;
+	//mf_t mf;
 
 	samplebuf_t *sbuf;
 	int sbuf_cnt;
@@ -54,6 +54,6 @@ typedef struct wview_s {
 
 wview_t *wview_init(int w, int h);
 void event_loop(wview_t * wv);
-int load_wave(wview_t * wv, char *fname);
+int load_wave(wview_t * wv, uint8_t * ptr);
 
 #endif

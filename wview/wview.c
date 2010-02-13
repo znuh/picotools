@@ -173,11 +173,11 @@ void draw_text(wview_t * wv)
 	color.g = 0x80;
 	color.b = 0xff;
 	strcat(buf, "/div ");
-	if(wv->wi->ch_config & 4)
-		strcat(buf,"DC");
+	if (wv->wi->ch_config & 4)
+		strcat(buf, "DC");
 	else
-		strcat(buf,"AC");
-	
+		strcat(buf, "AC");
+
 	render_text(buf, wv->x_ofs + 400, 2, color);
 
 	// V/div ch 2
@@ -188,10 +188,10 @@ void draw_text(wview_t * wv)
 		color.g = 0x80;
 		color.b = 0x80;
 		strcat(buf, "/div ");
-		if(wv->wi->ch_config & 8)
-			strcat(buf,"DC");
+		if (wv->wi->ch_config & 8)
+			strcat(buf, "DC");
 		else
-			strcat(buf,"AC");
+			strcat(buf, "AC");
 		render_text(buf, wv->x_ofs + 600, 2, color);
 	}
 }
@@ -238,8 +238,9 @@ void wview_redraw(wview_t * wv)
 		int last_upper = -1;
 
 		// zero offset
-		hlineColor(sdl.screen, 0, wv->x_ofs - 1, y_ofs + sbuf->y_ofs, color[buf_cnt]);
-		
+		hlineColor(sdl.screen, 0, wv->x_ofs - 1, y_ofs + sbuf->y_ofs,
+			   color[buf_cnt]);
+
 		x = 0;
 
 		// foreach sample
@@ -333,11 +334,16 @@ void wview_redraw(wview_t * wv)
 	}
 }
 
-scrollbar_t * sb;
+scrollbar_t *sb;
 
 void event_loop(wview_t * wv)
 {
 	int redraw = SB_VALS_CHANGED;
+
+	assert(sb);
+	assert(wv->wi);
+	assert(wv->wi->magic == WVINFO_MAGIC);
+	assert(wv->sbuf_cnt > 0);
 
 	while (1) {
 		SDL_Event event;
@@ -375,25 +381,19 @@ void event_loop(wview_t * wv)
 	}
 }
 
-int load_wave(wview_t * wv, char *fname)
+int load_wave(wview_t * wv, uint8_t * ptr)
 {
 	waveinfo_t *wi;
-	samplebuf_t *sbuf;
-	mf_t mf;
 
-	assert(!(map_file(&mf, fname, 0, 0)));
-
-	wv->mf = mf;
-
-	wi = (waveinfo_t *) mf.ptr;
+	wi = (waveinfo_t *) ptr;
 	wv->wi = wi;
 
 	assert(wi->magic == WVINFO_MAGIC);
 
 	sb->len = sb->max_len = wi->scnt;
-	
+
 	// skip header
-	mf.ptr += sizeof(waveinfo_t);
+	ptr += sizeof(waveinfo_t);
 
 	// 1 or 2 channels?
 	assert(wi->ch_config & 3);
@@ -402,40 +402,25 @@ int load_wave(wview_t * wv, char *fname)
 	else
 		wv->sbuf_cnt = 1;
 
-	assert((sbuf = malloc(sizeof(samplebuf_t) * wv->sbuf_cnt)));
-	wv->sbuf = sbuf;
-	
-	// 1st channel
-	sbuf[0].d = mf.ptr;
+	wv->sbuf[0].d = ptr;
 
-	sbuf[0].y_ofs = 128;	// channel y offset
-
-	sbuf[0].max_val = 127;
-	sbuf[0].min_val = -127;
-	sbuf[0].dtype = INT8;
-
-	if (wv->sbuf_cnt > 1) {
-		sbuf[1].d = mf.ptr + wi->scnt;	// * 2;  // CHANGEME: short -> byte
-
-		sbuf[1].y_ofs = 256 + 128;	// channel y offset
-
-		sbuf[1].max_val = 127;
-		sbuf[1].min_val = -127;
-		sbuf[1].dtype = INT8;
-	}
+	if (wv->sbuf_cnt > 1)
+		wv->sbuf[1].d = ptr + wi->scnt;
 
 	return 0;
 }
 
-wview_t *wview_init(int w, int h) {
+wview_t *wview_init(int w, int h)
+{
 	wview_t *wv = malloc(sizeof(wview_t));
+	samplebuf_t *sbuf;
 	assert(wv);
-	
+
 	wv->wi = NULL;
-	
-		// x zoom: min (show all samples)
+
+	// x zoom: min (show all samples)
 	wv->x_pos = 0;
-	wv->x_cnt = wv->target_w; //wv->wi->scnt; //TODO
+	wv->x_cnt = wv->target_w;	//wv->wi->scnt; //TODO
 
 	// main window
 	wv->x_ofs = 10;
@@ -443,7 +428,27 @@ wview_t *wview_init(int w, int h) {
 	wv->target_w = w;
 	wv->target_h = h;
 
-	//printf("%ld samples, target_w %ld\n", wview.samples, wview.target_w);
+	assert((sbuf = malloc(sizeof(samplebuf_t) * 2)));
+	wv->sbuf = sbuf;
+	wv->sbuf_cnt = 0;
+
+	// 1st channel
+//      sbuf[0].d = mf.ptr;
+
+	sbuf[0].y_ofs = 128;	// channel y offset
+
+	sbuf[0].max_val = 127;
+	sbuf[0].min_val = -127;
+	sbuf[0].dtype = INT8;
+
+	// 2nd channel
+//      sbuf[1].d = mf.ptr + wi->scnt;  // * 2;  // CHANGEME: short -> byte
+
+	sbuf[1].y_ofs = 256 + 128;	// channel y offset
+
+	sbuf[1].max_val = 127;
+	sbuf[1].min_val = -127;
+	sbuf[1].dtype = INT8;
 
 	sdl_init(wv->target_w + wv->x_ofs * 2,
 		 wv->target_h + wv->y_ofs * 2 + 30);
@@ -455,12 +460,7 @@ wview_t *wview_init(int w, int h) {
 		("/usr/share/fonts/truetype/ttf-dejavu/DejaVuSansMono.ttf",
 		 12)));
 
-	assert((sb =
-		scrollbar_create(sdl.screen, 0,
-				 wv->target_h + wv->y_ofs * 2,
-				 wv->target_w + 20, 12, wv->target_w,
-				 wv->target_w+1))); //TODO
+	assert((sb = scrollbar_create(sdl.screen, 0, wv->target_h + wv->y_ofs * 2, wv->target_w + 20, 12, wv->target_w, wv->target_w + 1)));	//TODO
 
-	
 	return wv;
 }
