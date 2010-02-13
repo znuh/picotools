@@ -25,6 +25,7 @@ extern SCOPE_TYPE_t scope_type;
 
 int main(int argc, char **argv)
 {
+	int dryrun = 0;
 
 	// http://tadeboro.blogspot.com/2009/06/multi-threaded-gtk-applications.html
 	if (!(g_thread_supported()))
@@ -56,23 +57,18 @@ int main(int argc, char **argv)
 
 	if (argc > 1) {
 		if (!(strcmp(argv[1], "-dryrun")))
-			goto skip_open;
+			dryrun = 1;
 	}
 
-	scope_open();
+	scope_open(dryrun);
 
- skip_open:
-
-	{
-		GtkWindow *w =
-		    GTK_WINDOW(glade_xml_get_widget(glade, "window1"));
-		if (scope_type == SCOPE_PS5204)
-			gtk_window_set_title(w, "pscope - PS5204");
-		else if (scope_type == SCOPE_PS5203)
-			gtk_window_set_title(w, "pscope - PS5203");
-		else
-			gtk_window_set_title(w, "pscope - NONE");
-	}
+	GtkWindow *w = GTK_WINDOW(glade_xml_get_widget(glade, "window1"));
+	if (scope_type == SCOPE_PS5204)
+		gtk_window_set_title(w, "pscope - PS5204");
+	else if (scope_type == SCOPE_PS5203)
+		gtk_window_set_title(w, "pscope - PS5203");
+	else
+		gtk_window_set_title(w, "pscope - NONE");
 
 	init();
 

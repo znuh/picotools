@@ -77,7 +77,7 @@ typedef struct scope_config_s {
 	unsigned long changed;	// TODO
 } scope_config_t;
 
-int scope_open(void);
+int scope_open(int dryrun);
 void scope_close(void);
 int scope_channel_config(int ch);
 int scope_sample_config(unsigned long *tbase, unsigned long *buflen);

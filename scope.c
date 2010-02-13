@@ -27,6 +27,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include "wview/wview.h"
 
 static unsigned long capture_cnt = 0;
 
@@ -38,21 +39,68 @@ SCOPE_TYPE_t scope_type = SCOPE_NONE;
 
 extern unsigned long ns;
 
-int scope_open(void)
+static short *d = NULL;
+uint8_t *waves = NULL;
+
+int wave_size = 0;
+
+wview_t *wv = NULL;
+
+int viewer_init(void)
+{
+	int max_samples = 1024 * 1024 * (scope_type == SCOPE_PS5204 ? 128 : 64);
+
+	assert((d = malloc(max_samples * sizeof(short))));
+
+	wave_size = max_samples + sizeof(waveinfo_t);
+
+	assert((waves = malloc(wave_size * 3)));
+
+	assert((wv = wview_init(1024, 512)));
+
+	/* TODO: extra thread for
+	   load_wave(wv, mf.ptr);
+	   event_loop(wv);
+	 */
+
+	return 0;
+}
+
+void viewer_destroy(void)
+{
+	if (d) {
+		free(d);
+		d = NULL;
+	}
+	if (waves) {
+		free(waves);
+		waves = NULL;
+	}
+}
+
+int scope_open(int dryrun)
 {
 	char line[80];
 	short i, r = 0;
 
-	PICO_STATUS res = ps5000OpenUnit(&handle);
-	assert(res == PICO_OK);
+	if (!dryrun) {
 
-	for (i = 0; i < 5; i++) {
-		ps5000GetUnitInfo(handle, line, sizeof(line), &r, i);
-		if (i == 3)
-			scope_type = atoi(line);
-		//printf("%s\n", line);
+		PICO_STATUS res = ps5000OpenUnit(&handle);
+		assert(res == PICO_OK);
+
+		for (i = 0; i < 5; i++) {
+			ps5000GetUnitInfo(handle, line, sizeof(line), &r, i);
+			if (i == 3)
+				scope_type = atoi(line);
+			//printf("%s\n", line);
+		}
+		assert((scope_type == SCOPE_PS5204)
+		       || (scope_type == SCOPE_PS5203));
+
 	}
-	assert((scope_type == SCOPE_PS5204) || (scope_type == SCOPE_PS5203));
+
+	viewer_init();
+
 	return 0;
 }
 
@@ -62,6 +110,8 @@ void scope_close(void)
 		return;
 	ps5000CloseUnit(handle);
 	scope_type = SCOPE_NONE;
+
+	viewer_destroy();
 }
 
 int scope_channel_config(int ch)
@@ -99,12 +149,41 @@ int scope_sample_config(unsigned long *tbase, unsigned long *buflen)
 
 void scope_done(void);
 
+void copy_wave(uint8_t * dst, short *d1, short *d2, waveinfo_t * wi)
+{
+	uint8_t *d;
+	int cnt;
+
+	memcpy(dst, wi, sizeof(waveinfo_t));
+	dst += sizeof(waveinfo_t);
+
+	// compress to 8 bit
+	if (d1) {
+		d = (uint8_t *) d1;
+		d++;
+		for (cnt = 0; cnt < wi->scnt; cnt++) {
+			*dst = *d;
+			dst++;
+			d += 2;
+		}
+	}
+
+	if (d2) {
+		d = (uint8_t *) d2;
+		d++;
+		for (cnt = 0; cnt < wi->scnt; cnt++) {
+			*dst = *d;
+			dst++;
+			d += 2;
+		}
+	}
+}
+
 void save_wave(char *fname, short *d1, short *d2, waveinfo_t * wi)
 {
 	int fd = open(fname, O_CREAT | O_RDWR, S_IWUSR | S_IRUSR);
 	int len = sizeof(waveinfo_t) + wi->scnt;
-	uint8_t *mapped, *ptr, *d;
-	int cnt;
+	uint8_t *mapped;
 
 	if (fd < 0)
 		return;
@@ -117,30 +196,7 @@ void save_wave(char *fname, short *d1, short *d2, waveinfo_t * wi)
 	assert((mapped =
 		mmap(NULL, len, PROT_WRITE, MAP_SHARED, fd, 0)) != MAP_FAILED);
 
-	memcpy(mapped, wi, sizeof(waveinfo_t));
-
-	ptr = mapped + sizeof(waveinfo_t);
-
-	// compress to 8 bit
-	if (d1) {
-		d = (uint8_t *) d1;
-		d++;
-		for (cnt = 0; cnt < wi->scnt; cnt++) {
-			*ptr = *d;
-			ptr++;
-			d += 2;
-		}
-	}
-
-	if (d2) {
-		d = (uint8_t *) d2;
-		d++;
-		for (cnt = 0; cnt < wi->scnt; cnt++) {
-			*ptr = *d;
-			ptr++;
-			d += 2;
-		}
-	}
+	copy_wave(mapped, d1, d2, wi);
 
 	munmap(mapped, len);
 	close(fd);
@@ -192,8 +248,9 @@ void PREF4 CallBackBlock(short handle, PICO_STATUS status, void *pParameter)
 	char buf[128] = "./wview/wview ";
 	waveinfo_t wi;
 	unsigned long scnt = scope_config.samples;
-	short *d1 = NULL, *d2 = NULL;
 	time_t now = time(NULL);
+	short *d1 = d, *d2 = d;
+	int channels = scope_config.channel_config;
 
 	// notify gui
 	scope_done();
@@ -202,16 +259,19 @@ void PREF4 CallBackBlock(short handle, PICO_STATUS status, void *pParameter)
 
 	printf("done scnt %ld status %ld\n", scnt, status);
 
+	if ((channels & 3) == 3)
+		d2 = d1 + scope_config.samples;
+
 	// 1st channel active
-	if ((scope_config.channel_config >> 0) & 1) {
-		assert((d1 = malloc(scope_config.samples * sizeof(short))));
+	if ((channels >> 0) & 1) {
+		//assert((d1 = malloc(scope_config.samples * sizeof(short))));
 		assert(ps5000SetDataBuffer
 		       (handle, PS5000_CHANNEL_A, d1,
 			scope_config.samples) == PICO_OK);
 	}
 	// 2nd channel active
-	if ((scope_config.channel_config >> 1) & 1) {
-		assert((d2 = malloc(scope_config.samples * sizeof(short))));
+	if ((channels >> 1) & 1) {
+		//assert((d2 = malloc(scope_config.samples * sizeof(short))));
 		assert(ps5000SetDataBuffer
 		       (handle, PS5000_CHANNEL_B, d2,
 			scope_config.samples) == PICO_OK);
@@ -242,8 +302,8 @@ void PREF4 CallBackBlock(short handle, PICO_STATUS status, void *pParameter)
 
 	wi.ns = ns;
 
-	wi.scale[0] = scope_config.f_range[0] / (PS5000_MAX_VALUE>>8);
-	wi.scale[1] = scope_config.f_range[1] / (PS5000_MAX_VALUE>>8);
+	wi.scale[0] = scope_config.f_range[0] / (PS5000_MAX_VALUE >> 8);
+	wi.scale[1] = scope_config.f_range[1] / (PS5000_MAX_VALUE >> 8);
 
 	wi.ch_config = scope_config.channel_config;
 
@@ -251,18 +311,21 @@ void PREF4 CallBackBlock(short handle, PICO_STATUS status, void *pParameter)
 	   sprintf(fname, "%ld.txt", now);
 	   save_ascii(fname, d1, d2, &wi);
 	 */
-
+/*
 	sprintf(fname, "%ld.wv", now);
 	save_wave(fname, d1, d2, &wi);
 
 	strcat(buf, fname);
 	strcat(buf, " &");
 	system(buf);
-
+	*/
+	copy_wave(waves, d1, d2, &wi);
+/*
 	if (d1)
 		free(d1);
 	if (d2)
 		free(d2);
+		*/
 }
 
 int scope_run(int single)
