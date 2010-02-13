@@ -52,4 +52,8 @@ typedef struct wview_s {
 	unsigned long target_w, target_h;
 } wview_t;
 
+wview_t *wview_init(int w, int h);
+void event_loop(wview_t * wv);
+int load_wave(wview_t * wv, char *fname);
+
 #endif

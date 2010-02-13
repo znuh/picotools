@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <SDL/SDL_ttf.h>
+#include <stdlib.h>
 #include <assert.h>
 #include "wview.h"
 #include "mmap.h"
@@ -332,7 +333,9 @@ void wview_redraw(wview_t * wv)
 	}
 }
 
-void event_loop(wview_t * wv, scrollbar_t * sb)
+scrollbar_t * sb;
+
+void event_loop(wview_t * wv)
 {
 	int redraw = SB_VALS_CHANGED;
 
@@ -372,10 +375,6 @@ void event_loop(wview_t * wv, scrollbar_t * sb)
 	}
 }
 
-/* wview_create
-
-*/
-
 int load_wave(wview_t * wv, char *fname)
 {
 	waveinfo_t *wi;
@@ -391,6 +390,8 @@ int load_wave(wview_t * wv, char *fname)
 
 	assert(wi->magic == WVINFO_MAGIC);
 
+	sb->len = sb->max_len = wi->scnt;
+	
 	// skip header
 	mf.ptr += sizeof(waveinfo_t);
 
@@ -403,7 +404,7 @@ int load_wave(wview_t * wv, char *fname)
 
 	assert((sbuf = malloc(sizeof(samplebuf_t) * wv->sbuf_cnt)));
 	wv->sbuf = sbuf;
-
+	
 	// 1st channel
 	sbuf[0].d = mf.ptr;
 
@@ -426,31 +427,26 @@ int load_wave(wview_t * wv, char *fname)
 	return 0;
 }
 
-// wview_destroy - unmap file, free
-
-int main(int argc, char **argv)
-{
-	wview_t wview;
-	scrollbar_t *sb;
-
-	assert(argc > 1);
-
-	load_wave(&wview, argv[1]);
-
-	// x zoom: min (show all samples)
-	wview.x_pos = 0;
-	wview.x_cnt = wview.wi->scnt;
+wview_t *wview_init(int w, int h) {
+	wview_t *wv = malloc(sizeof(wview_t));
+	assert(wv);
+	
+	wv->wi = NULL;
+	
+		// x zoom: min (show all samples)
+	wv->x_pos = 0;
+	wv->x_cnt = wv->target_w; //wv->wi->scnt; //TODO
 
 	// main window
-	wview.x_ofs = 10;
-	wview.y_ofs = 20;
-	wview.target_w = 1024;
-	wview.target_h = 512;
+	wv->x_ofs = 10;
+	wv->y_ofs = 20;
+	wv->target_w = w;
+	wv->target_h = h;
 
 	//printf("%ld samples, target_w %ld\n", wview.samples, wview.target_w);
 
-	sdl_init(wview.target_w + wview.x_ofs * 2,
-		 wview.target_h + wview.y_ofs * 2 + 30);
+	sdl_init(wv->target_w + wv->x_ofs * 2,
+		 wv->target_h + wv->y_ofs * 2 + 30);
 
 	assert(!TTF_Init());
 
@@ -461,13 +457,10 @@ int main(int argc, char **argv)
 
 	assert((sb =
 		scrollbar_create(sdl.screen, 0,
-				 wview.target_h + wview.y_ofs * 2,
-				 wview.target_w + 20, 12, wview.target_w,
-				 wview.wi->scnt)));
+				 wv->target_h + wv->y_ofs * 2,
+				 wv->target_w + 20, 12, wv->target_w,
+				 wv->target_w+1))); //TODO
 
-	event_loop(&wview, sb);
-
-	scrollbar_destroy(sb);
-
-	return 0;
+	
+	return wv;
 }
