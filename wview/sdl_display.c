@@ -11,7 +11,7 @@ int sdl_init(int w, int h)
 	sdl.w = w;
 	sdl.h = h;
 
-	if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTTHREAD) < 0) {
 		fprintf(stderr, "can't initialize SDL video\n");
 		exit(1);
 	}

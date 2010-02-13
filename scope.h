@@ -84,5 +84,6 @@ int scope_sample_config(unsigned long *tbase, unsigned long *buflen);
 int scope_run(int single);
 void scope_stop(void);
 int scope_trigger_config(void);
+void viewer_close(void);
 
 #endif

@@ -58,11 +58,15 @@ void wview_thread(void)
 	assert((wv = wview_init(1024, 512)));
 
 	// tell the parent wview is ready
+	g_mutex_lock(mutex);
 	g_cond_broadcast(cond);
+	g_mutex_unlock(mutex);
 
 	event_loop(wv);
 
 }
+
+GThread *viewer_thread = NULL;
 
 int viewer_init(void)
 {
@@ -79,13 +83,23 @@ int viewer_init(void)
 
 	g_mutex_lock(mutex);
 
-	g_thread_create((GThreadFunc) wview_thread, NULL, FALSE, NULL);
+	viewer_thread =
+	    g_thread_create((GThreadFunc) wview_thread, NULL, TRUE, NULL);
 
 	// wait for wview to come up
 	g_cond_wait(cond, mutex);
 	g_mutex_unlock(mutex);
 
 	return 0;
+}
+
+void viewer_close(void)
+{
+	SDL_Event ev;
+
+	ev.type = SDL_QUIT;
+	SDL_PushEvent(&ev);
+	g_thread_join(viewer_thread);
 }
 
 void viewer_destroy(void)

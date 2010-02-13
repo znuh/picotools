@@ -464,5 +464,6 @@ void init(void)
 void window1_destroy(GtkObject * object, gpointer user_data)
 {
 	scope_close();
+	viewer_close();
 	gtk_main_quit();
 }
