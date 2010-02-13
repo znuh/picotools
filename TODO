@@ -7,7 +7,7 @@
 	+ time offset
 	+ show trigger point
 	+ show volt/div
-	- live display
+	- live display (buffer w/ locking)
 	- save file
 	
     GtkUI:
@@ -17,7 +17,7 @@
 	+ CSV: fix trigger time=0
 	+ fix run/auto buttons
 	+ fix 2 channels bug
-	- auto mode
+	+ auto mode
 
 0.2:
     wview:

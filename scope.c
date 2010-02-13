@@ -64,6 +64,7 @@ void wview_thread(void)
 
 	event_loop(wv);
 
+	SDL_Quit();
 }
 
 GThread *viewer_thread = NULL;
