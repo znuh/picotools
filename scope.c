@@ -46,6 +46,29 @@ int wave_size = 0;
 
 wview_t *wv = NULL;
 
+void wview_thread(void)
+{
+	assert((wv = wview_init(1024, 512)));
+
+	// TODO: tell the parent wview is ready
+
+	event_loop(wv);
+
+}
+
+// TODO: cleanup code - seperate SDL/GTK/scope parts
+#include <gtk/gtk.h>
+#include <SDL/SDL.h>
+
+void notify_viewer(uint8_t * ptr)
+{
+	SDL_Event ev;
+
+	ev.type = SDL_USEREVENT;
+	ev.user.data1 = ptr;
+	SDL_PushEvent(&ev);
+}
+
 int viewer_init(void)
 {
 	int max_samples = 1024 * 1024 * (scope_type == SCOPE_PS5204 ? 128 : 64);
@@ -56,12 +79,9 @@ int viewer_init(void)
 
 	assert((waves = malloc(wave_size * 3)));
 
-	assert((wv = wview_init(1024, 512)));
+	g_thread_create((GThreadFunc) wview_thread, NULL, FALSE, NULL);
 
-	/* TODO: extra thread for
-	   load_wave(wv, mf.ptr);
-	   event_loop(wv);
-	 */
+	// TODO: wait for wview to come up
 
 	return 0;
 }
@@ -147,7 +167,7 @@ int scope_sample_config(unsigned long *tbase, unsigned long *buflen)
 	return ((res == PICO_OK) ? 0 : -1);
 }
 
-void scope_done(void);
+int scope_done(void);
 
 void copy_wave(uint8_t * dst, short *d1, short *d2, waveinfo_t * wi)
 {
@@ -242,22 +262,28 @@ void scope_stop(void)
 	ps5000Stop(handle);
 }
 
+void rerun_thread(void)
+{
+	usleep(1000);		//TODO: fixme - use auto mode
+	scope_run(0);
+}
+
 void PREF4 CallBackBlock(short handle, PICO_STATUS status, void *pParameter)
 {
-	char fname[64];
-	char buf[128] = "./wview/wview ";
+	//char fname[64], buf[128] = "./wview/wview ";
 	waveinfo_t wi;
 	unsigned long scnt = scope_config.samples;
 	time_t now = time(NULL);
 	short *d1 = d, *d2 = d;
 	int channels = scope_config.channel_config;
+	int run_again = 0;
 
 	// notify gui
-	scope_done();
+	run_again = scope_done();
 
 	scope_stop();
 
-	printf("done scnt %ld status %ld\n", scnt, status);
+	//printf("done scnt %ld status %ld\n", scnt, status);
 
 	if ((channels & 3) == 3)
 		d2 = d1 + scope_config.samples;
@@ -319,13 +345,17 @@ void PREF4 CallBackBlock(short handle, PICO_STATUS status, void *pParameter)
 	strcat(buf, " &");
 	system(buf);
 	*/
-	copy_wave(waves, d1, d2, &wi);
+	copy_wave(waves, d1, d2, &wi);	// TODO: triplebuffer w/ locking
+	notify_viewer(waves);
 /*
 	if (d1)
 		free(d1);
 	if (d2)
 		free(d2);
 		*/
+	if (run_again)
+		g_thread_create((GThreadFunc) rerun_thread, NULL, FALSE, NULL);
+
 }
 
 int scope_run(int single)
@@ -346,7 +376,8 @@ int scope_run(int single)
 	    ps5000RunBlock(handle, pre, post, scope_config.timebase, 0, NULL, 0,
 			   CallBackBlock, NULL);
 
-	printf("run: %ld (%s)\n", res, (res == PICO_OK) ? "ok" : "FAIL");
+	if (res != PICO_OK)
+		printf("run FAIL: %lx\n", res);
 
 	return ((res == PICO_OK) ? 0 : -1);
 }

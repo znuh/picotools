@@ -54,6 +54,8 @@ int main(int argc, char **argv)
 		GTK_LABEL(glade_xml_get_widget(glade, "trig_post_lbl"))));
 	assert((single_btn =
 		GTK_TOGGLE_BUTTON(glade_xml_get_widget(glade, "single_btn"))));
+	assert((auto_btn =
+		GTK_TOGGLE_BUTTON(glade_xml_get_widget(glade, "auto_btn"))));
 
 	if (argc > 1) {
 		if (!(strcmp(argv[1], "-dryrun")))

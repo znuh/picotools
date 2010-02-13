@@ -336,51 +336,6 @@ void wview_redraw(wview_t * wv)
 
 scrollbar_t *sb;
 
-void event_loop(wview_t * wv)
-{
-	int redraw = SB_VALS_CHANGED;
-
-	assert(sb);
-	assert(wv->wi);
-	assert(wv->wi->magic == WVINFO_MAGIC);
-	assert(wv->sbuf_cnt > 0);
-
-	while (1) {
-		SDL_Event event;
-
-		SDL_WaitEvent(NULL);
-
-		while (SDL_PollEvent(&event)) {
-			if ((event.type == SDL_MOUSEMOTION)
-			    || (event.type == SDL_MOUSEBUTTONDOWN)
-			    || (event.type == SDL_MOUSEBUTTONUP)) {
-				redraw |= scrollbar_event(sb, &event);
-			}
-
-			if (event.type == SDL_QUIT)
-				return;
-		}
-
-		wv->x_cnt = sb->len;
-		wv->x_pos = sb->pos;
-
-		if (redraw) {
-			// TODO: don't redraw everything all the time
-			SDL_FillRect(sdl.screen, NULL, 0xff000000);
-
-			//if(redraw & SB_CHANGED)
-			// always redraw scrollbar otherwise it'll disappear
-			scrollbar_draw(sb);
-
-			//if (redraw & SB_VALS_CHANGED)
-			wview_redraw(wv);
-
-			SDL_Flip(sdl.screen);
-		}
-		redraw = 0;
-	}
-}
-
 int load_wave(wview_t * wv, uint8_t * ptr)
 {
 	waveinfo_t *wi;
@@ -408,6 +363,63 @@ int load_wave(wview_t * wv, uint8_t * ptr)
 		wv->sbuf[1].d = ptr + wi->scnt;
 
 	return 0;
+}
+
+void event_loop(wview_t * wv)
+{
+	int redraw = SB_VALS_CHANGED;
+	int initialized = 0;
+
+	assert(sb);
+
+	while (1) {
+		SDL_Event event;
+
+		SDL_WaitEvent(NULL);
+
+		// aggregate events
+		while (SDL_PollEvent(&event)) {
+
+			if (event.type == SDL_USEREVENT) {
+				load_wave(wv, event.user.data1);	// TODO: triple buffer w/ locking
+				redraw = 1;
+			} else if (event.type == SDL_QUIT)
+				return;
+
+			if ((wv->wi) && (wv->wi->magic == WVINFO_MAGIC)
+			    && (wv->sbuf_cnt > 0))
+				initialized = 1;
+			if ((initialized) && ((event.type == SDL_MOUSEMOTION)
+					      || (event.type ==
+						  SDL_MOUSEBUTTONDOWN)
+					      || (event.type ==
+						  SDL_MOUSEBUTTONUP))) {
+				redraw |= scrollbar_event(sb, &event);
+			}
+		}
+
+		if (!(initialized))
+			continue;
+
+		wv->x_cnt = sb->len;
+		wv->x_pos = sb->pos;
+
+		// TODO: redraw only if minimum delay of 1/60 sec. passed
+		if (redraw) {
+			// TODO: don't redraw everything all the time
+			SDL_FillRect(sdl.screen, NULL, 0xff000000);
+
+			//if(redraw & SB_CHANGED)
+			// always redraw scrollbar otherwise it'll disappear
+			scrollbar_draw(sb);
+
+			//if (redraw & SB_VALS_CHANGED)
+			wview_redraw(wv);
+
+			SDL_Flip(sdl.screen);
+		}
+		redraw = 0;
+	}
 }
 
 wview_t *wview_init(int w, int h)

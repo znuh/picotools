@@ -28,6 +28,7 @@ GtkLabel *time_lbl;
 GtkProgressBar *progress;
 
 GtkToggleButton *single_btn;
+GtkToggleButton *auto_btn;
 
 guint reconf_timer = -1;
 int reconf_timer_active = 0;
@@ -59,14 +60,25 @@ void format_time(char *buf, float time_ns)
 		sprintf(buf, "%.3f s", time_ns);
 }
 
-void scope_done(void)
+int scope_done(void)
 {
+	int res = 0;
+
 	// called from scope thread!
 	gdk_threads_enter();
-	// TODO: auto mode
-	gtk_toggle_button_set_active(single_btn, 0);
+
+	// single
+	if (gtk_toggle_button_get_active(single_btn))
+		gtk_toggle_button_set_active(single_btn, 0);
+
+	// auto
+	else if (gtk_toggle_button_get_active(auto_btn))
+		res = 1;
+
 	gtk_progress_bar_pulse(progress);
 	gdk_threads_leave();
+
+	return res;
 }
 
 /***************** srate/buf reconf timer **************************/
@@ -114,19 +126,15 @@ void on_single_btn_toggled(GtkWidget * w, gpointer priv)
 
 	if (res)
 		gtk_toggle_button_set_active(single_btn, 0);
-	// TODO: auto
 }
 
 void on_auto_btn_toggled(GtkWidget * w, gpointer priv)
 {
-	// ignore auto mode while dumping to textfiles... (bad idea)
-	/*
-	   int val = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(w));
-	   int res;
+	int val = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(w));
+	int res;
 
-	   if(val)
-	   res = scope_run(0);
-	 */
+	if (val)
+		res = scope_run(0);
 }
 
 /***************** channel config **************************/

@@ -27,6 +27,7 @@ GtkLabel *trig_post_lbl;
 GtkLabel *time_lbl;
 
 GtkToggleButton *single_btn;
+GtkToggleButton *auto_btn;
 
 void on_ch1_range_cbox_changed(GtkWidget * w, gpointer priv);
 void on_ch2_btn_toggled(GtkWidget * w, gpointer priv);
