@@ -18,6 +18,7 @@
 	+ fix run/auto buttons
 	+ fix 2 channels bug
 	+ auto mode
+	- fix reconfig while running bug
 
 0.2:
     wview:

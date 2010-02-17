@@ -116,13 +116,30 @@ void viewer_destroy(void)
 	}
 }
 
+int new_wave = 0;
+
 void notify_viewer(uint8_t * ptr)
 {
 	SDL_Event ev;
 
 	ev.type = SDL_USEREVENT;
-	ev.user.data1 = ptr;
+	//ev.user.data1 = ptr;
+	new_wave = 1;
 	SDL_PushEvent(&ev);
+}
+
+int request_wave(uint8_t ** ptr)
+{
+	*ptr = waves;
+	if (new_wave) {
+		new_wave = 0;
+		return 1;
+	}
+	return 0;
+}
+
+void release_wave(uint8_t * ptr)
+{
 }
 
 int scope_open(int dryrun)

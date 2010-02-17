@@ -375,9 +375,13 @@ int load_wave(wview_t * wv, uint8_t * ptr)
 	return 0;
 }
 
+extern int request_wave(uint8_t ** ptr);
+extern void release_wave(uint8_t * ptr);
+
 void event_loop(wview_t * wv)
 {
 	//SDL_Color fg = { 0x80, 0x80, 0x80 };
+	uint8_t *wavedata = NULL;
 	int redraw = SB_VALS_CHANGED;
 	int initialized = 0;
 
@@ -395,15 +399,12 @@ void event_loop(wview_t * wv)
 		// aggregate events
 		while (SDL_PollEvent(&event)) {
 
-			if (event.type == SDL_USEREVENT) {
-				load_wave(wv, event.user.data1);	// TODO: triple buffer w/ locking
-				redraw = 1;
-			} else if (event.type == SDL_QUIT)
+			if (event.type == SDL_QUIT)
 				return;
 
-			if ((wv->wi) && (wv->wi->magic == WVINFO_MAGIC)
-			    && (wv->sbuf_cnt > 0))
-				initialized = 1;
+			//if ((wv->wi) && (wv->wi->magic == WVINFO_MAGIC)
+			//   && (wv->sbuf_cnt > 0))
+			//      initialized = 1;
 			if ((initialized) && ((event.type == SDL_MOUSEMOTION)
 					      || (event.type ==
 						  SDL_MOUSEBUTTONDOWN)
@@ -411,6 +412,13 @@ void event_loop(wview_t * wv)
 						  SDL_MOUSEBUTTONUP))) {
 				redraw |= scrollbar_event(sb, &event);
 			}
+		}
+
+		// new wave data?
+		if (request_wave(&wavedata)) {
+			load_wave(wv, wavedata);
+			initialized = 1;
+			redraw = 1;
 		}
 
 		if (!(initialized))
@@ -430,6 +438,8 @@ void event_loop(wview_t * wv)
 
 			//if (redraw & SB_VALS_CHANGED)
 			wview_redraw(wv);
+
+			release_wave(wavedata);
 
 			SDL_Flip(sdl.screen);
 		}
