@@ -1,3 +1,8 @@
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <unistd.h>
 #include <stdio.h>
 #include <SDL/SDL_ttf.h>
 #include <stdlib.h>
@@ -162,6 +167,15 @@ void draw_text(wview_t * wv)
 	buf[strlen(buf) - 1] = 0;
 	render_text(buf, wv->x_ofs, 2, color);
 
+	// samples/s
+	val = 1000;
+	val /= (float)wv->wi->ns;
+	if (val >= 1000)
+		sprintf(buf, "%.3f GS/s", val / (float)1000);
+	else
+		sprintf(buf, "%.3f MS/s", val);
+	render_text(buf, wv->x_ofs + 800, 2, color);
+
 	// capture counter
 	sprintf(buf, "%6ld", wv->wi->capture_cnt);
 	render_text(buf, -10, 2, color);
@@ -178,7 +192,7 @@ void draw_text(wview_t * wv)
 	else
 		strcat(buf, "AC");
 
-	render_text(buf, wv->x_ofs + 400, 2, color);
+	render_text(buf, wv->x_ofs + 300, 2, color);
 
 	// V/div ch 2
 	if (wv->wi->scnt > 1) {
@@ -192,8 +206,9 @@ void draw_text(wview_t * wv)
 			strcat(buf, "DC");
 		else
 			strcat(buf, "AC");
-		render_text(buf, wv->x_ofs + 600, 2, color);
+		render_text(buf, wv->x_ofs + 500, 2, color);
 	}
+
 }
 
 void draw_grid(wview_t * wv)
@@ -343,6 +358,44 @@ void wview_redraw(wview_t * wv)
 
 scrollbar_t *sb;
 
+void save_wave(wview_t * wv)
+{
+	uint8_t *dst, *ptr;
+	int fd, len = wv->wi->scnt;
+	char buf[64];
+
+	if (wv->sbuf_cnt == 2)
+		len *= 2;
+
+	sprintf(buf, "%ld.wv", wv->wi->capture_time);
+	fd = open(buf, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
+	if (fd < 0)
+		return;
+
+	if (ftruncate(fd, len + sizeof(waveinfo_t)))
+		goto done;
+
+	dst =
+	    mmap(NULL, len + sizeof(waveinfo_t), PROT_WRITE, MAP_SHARED, fd, 0);
+	if (dst == MAP_FAILED)
+		goto done;
+
+	memcpy(dst, wv->wi, sizeof(waveinfo_t));
+	ptr = dst + sizeof(waveinfo_t);
+
+	memcpy(ptr, wv->sbuf[0].d, wv->wi->scnt);
+	ptr += wv->wi->scnt;
+
+	if (wv->sbuf_cnt == 2)
+		memcpy(ptr, wv->sbuf[1].d, wv->wi->scnt);
+
+	munmap(dst, len + sizeof(waveinfo_t));
+
+ done:
+	close(fd);
+	return;
+}
+
 int load_wave(wview_t * wv, uint8_t * ptr)
 {
 	waveinfo_t *wi;
@@ -405,12 +458,18 @@ void event_loop(wview_t * wv)
 			//if ((wv->wi) && (wv->wi->magic == WVINFO_MAGIC)
 			//   && (wv->sbuf_cnt > 0))
 			//      initialized = 1;
-			if ((initialized) && ((event.type == SDL_MOUSEMOTION)
-					      || (event.type ==
-						  SDL_MOUSEBUTTONDOWN)
-					      || (event.type ==
-						  SDL_MOUSEBUTTONUP))) {
-				redraw |= scrollbar_event(sb, &event);
+			if (initialized) {
+				if (event.type == SDL_MOUSEBUTTONDOWN) {
+					int m_x = event.button.x;
+					int m_y = event.button.y;
+					if ((m_x <= 20) && (m_y <= 20))
+						save_wave(wv);
+				}
+				if (((event.type == SDL_MOUSEMOTION)
+				     || (event.type == SDL_MOUSEBUTTONDOWN)
+				     || (event.type == SDL_MOUSEBUTTONUP))) {
+					redraw |= scrollbar_event(sb, &event);
+				}
 			}
 		}
 
