@@ -358,7 +358,7 @@ void wview_redraw(wview_t * wv)
 
 scrollbar_t *sb;
 
-void save_wave(wview_t * wv)
+void wv_save_wave(wview_t * wv)
 {
 	uint8_t *dst, *ptr;
 	int fd, len = wv->wi->scnt;
@@ -463,7 +463,7 @@ void event_loop(wview_t * wv)
 					int m_x = event.button.x;
 					int m_y = event.button.y;
 					if ((m_x <= 20) && (m_y <= 20))
-						save_wave(wv);
+						wv_save_wave(wv);
 				}
 				if (((event.type == SDL_MOUSEMOTION)
 				     || (event.type == SDL_MOUSEBUTTONDOWN)

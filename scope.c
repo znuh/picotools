@@ -146,10 +146,11 @@ int scope_open(int dryrun)
 {
 	char line[80];
 	short i, r = 0;
+	PICO_STATUS res;
 
 	if (!dryrun) {
 
-		PICO_STATUS res = ps5000OpenUnit(&handle);
+		res = ps5000OpenUnit(&handle);
 		assert(res == PICO_OK);
 
 		for (i = 0; i < 5; i++) {
@@ -164,7 +165,8 @@ int scope_open(int dryrun)
 	}
 
 	viewer_init();
-
+	res = ps5000SetSigGenBuiltIn(handle, 0, 200000, 0, (float)4000000.0, (float)4000000., 0, 0, 0, 0, 0, 0, 0, 0, 0);
+	printf("%ld %lx\n",res,res);
 	return 0;
 }
 
