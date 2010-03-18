@@ -146,7 +146,7 @@ int scope_open(int dryrun)
 {
 	char line[80];
 	short i, r = 0;
-	PICO_STATUS res;
+	PICO_STATUS res = PICO_OK;
 
 	if (!dryrun) {
 
@@ -165,8 +165,9 @@ int scope_open(int dryrun)
 	}
 
 	viewer_init();
-	res = ps5000SetSigGenBuiltIn(handle, 0, 200000, 0, (float)4000000.0, (float)4000000., 0, 0, 0, 0, 0, 0, 0, 0, 0);
-	printf("%ld %lx\n",res,res);
+//      res = ps5000SetSigGenBuiltIn(handle, 0, 3000000, 0, (float)1000000.0, (float)1000000., 0, 0, 0, 0, 0, 0, 0, 0, 0);
+//      printf("%ld %lx\n",res,res);
+//      assert(res == PICO_OK);
 	return 0;
 }
 
@@ -511,4 +512,39 @@ int scope_trigger_config(void)
  error:
 	printf("trigger cfg error\n");
 	return res;
+}
+
+int scope_siggen_config(long ofs, unsigned long pk2pk, float f, short wform)
+{
+	int ret = 0;
+	PICO_STATUS res;
+
+	if (!scope_type)
+		return ret;
+
+	res =
+	    ps5000SetSigGenBuiltIn(handle, ofs, pk2pk, wform, f, f, 0, 0, 0, 0,
+				   0, 0, 0, 0, 0);
+
+	if (res == PICO_OK)
+		return ret;
+
+	switch (res) {
+	case PICO_SIG_GEN_PARAM:
+		ret = -1;
+		break;
+	case PICO_SIGGEN_OFFSET_VOLTAGE:
+		ret = -2;
+		break;
+	case PICO_SIGGEN_PK_TO_PK:
+		ret = -3;
+		break;
+	case PICO_SIGGEN_OUTPUT_OVER_VOLTAGE:
+		ret = -4;
+		break;
+	default:
+		ret = -5;
+	}
+
+	return ret;
 }

@@ -16,6 +16,7 @@
 #include <gtk/gtk.h>
 #include <glade/glade.h>
 #include <string.h>
+#include <stdlib.h>
 #include "scope.h"
 
 GtkLabel *samples_lbl;
@@ -410,6 +411,68 @@ void on_trig_edge_cbox_changed(GtkWidget * w, gpointer priv)
 	// SetTriggerChannelDirections
 	scope_config.changed |= SCOPE_CHANGED_TRIG_DIR;
 	scope_trigger_config();
+}
+
+void on_siggen_btn_clicked(GtkWidget * w, gpointer priv)
+{
+	gtk_window_present(GTK_WINDOW(glade_xml_get_widget(glade, "window2")));
+}
+
+void on_siggen_apply_btn_clicked(GtkWidget * w, gpointer priv)
+{
+	long ofs;
+	unsigned long pk2pk;
+	int wform, res;
+	float f;
+
+	w = glade_xml_get_widget(glade, "siggen_ofs_entry");
+	ofs = strtol(gtk_entry_get_text(GTK_ENTRY(w)), NULL, 10);
+
+	w = glade_xml_get_widget(glade, "siggen_pk2pk_entry");
+	pk2pk = strtoul(gtk_entry_get_text(GTK_ENTRY(w)), NULL, 10);
+
+	w = glade_xml_get_widget(glade, "siggen_f_entry");
+	f = strtof(gtk_entry_get_text(GTK_ENTRY(w)), NULL);
+
+	w = glade_xml_get_widget(glade, "siggen_wform_combobox");
+	wform = gtk_combo_box_get_active(GTK_COMBO_BOX(w));
+
+	wform--;
+	if (wform < 0) {
+		f = 0;
+		pk2pk = 0;
+		ofs = 0;
+		wform = 0;
+	}
+	res = scope_siggen_config(ofs, pk2pk, f, wform);
+	printf("siggen %ld %ld %f %d res: %d\n", ofs, pk2pk, f, wform, res);
+
+	w = glade_xml_get_widget(glade, "siggen_status_lbl");
+
+	if (res < 0) {
+		switch (res) {
+		case -1:
+			gtk_label_set_text(GTK_LABEL(w), "ERROR: param");
+			break;
+		case -2:
+			gtk_label_set_text(GTK_LABEL(w), "ERROR: ofs");
+			break;
+		case -3:
+			gtk_label_set_text(GTK_LABEL(w), "ERROR: pk2pk");
+			break;
+		case -4:
+			gtk_label_set_text(GTK_LABEL(w), "ERROR: Vout");
+			break;
+		default:
+			gtk_label_set_text(GTK_LABEL(w), "ERROR");
+			break;
+		}
+	} else {
+		if (f == 0)
+			gtk_label_set_text(GTK_LABEL(w), "OFF");
+		else
+			gtk_label_set_text(GTK_LABEL(w), "OK");
+	}
 }
 
 void init(void)

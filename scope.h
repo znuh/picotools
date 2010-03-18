@@ -85,5 +85,6 @@ int scope_run(int single);
 void scope_stop(void);
 int scope_trigger_config(void);
 void viewer_close(void);
+int scope_siggen_config(long ofs, unsigned long pk2pk, float f, short wform);
 
 #endif
