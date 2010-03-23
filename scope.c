@@ -185,7 +185,7 @@ int scope_channel_config(int ch)
 {
 	PS5000_CHANNEL scope_ch = ch ? PS5000_CHANNEL_B : PS5000_CHANNEL_A;
 	short enable = (scope_config.channel_config >> ch) & 1;
-	short dc = (scope_config.channel_config >> (ch * 2)) & 1;
+	short dc = (scope_config.channel_config >> (ch + 2)) & 1;
 	PS5000_RANGE range = scope_config.range[ch];
 
 	printf("ch %d: %s %s %d\n", scope_ch, enable ? "enable" : "",
