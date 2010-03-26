@@ -26,6 +26,8 @@ typedef struct samplebuf_s {
 	float min_val;
 	float max_val;
 
+	uint8_t invert_y;
+
 	//int v_range;
 	//int coupling;
 	//int scale;

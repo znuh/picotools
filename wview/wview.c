@@ -62,7 +62,11 @@ int pixel_from_sample(samplebuf_t * sbuf, float sample)
 
 	val *= 256;		//(wv->y_cnt);
 	val /= (sbuf->max_val - sbuf->min_val);
-	val = sbuf->y_ofs - val;
+
+	if (sbuf->invert_y)
+		val = sbuf->y_ofs + val;
+	else
+		val = sbuf->y_ofs - val;
 
 	// TODO: round?
 	pixel = val;
@@ -192,6 +196,9 @@ void draw_text(wview_t * wv)
 	else
 		strcat(buf, "AC");
 
+	if (wv->sbuf[0].invert_y)
+		strcat(buf, " INV");
+
 	render_text(buf, wv->x_ofs + 300, 2, color);
 
 	// V/div ch 2
@@ -206,6 +213,10 @@ void draw_text(wview_t * wv)
 			strcat(buf, "DC");
 		else
 			strcat(buf, "AC");
+
+		if (wv->sbuf[1].invert_y)
+			strcat(buf, " INV");
+
 		render_text(buf, wv->x_ofs + 500, 2, color);
 	}
 
@@ -459,12 +470,36 @@ void event_loop(wview_t * wv)
 			//   && (wv->sbuf_cnt > 0))
 			//      initialized = 1;
 			if (initialized) {
+				// HACK: save file
 				if (event.type == SDL_MOUSEBUTTONDOWN) {
 					int m_x = event.button.x;
 					int m_y = event.button.y;
 					if ((m_x <= 20) && (m_y <= 20))
 						wv_save_wave(wv);
 				}
+				// HACK: invert channel y
+				if (event.type == SDL_MOUSEBUTTONDOWN) {
+					int m_x = event.button.x;
+					int m_y = event.button.y;
+					if ((m_x >= wv->x_ofs + 300)
+					    && (m_x < wv->x_ofs + 500)
+					    && (m_y <= 20)) {
+						wv->sbuf[0].invert_y ^= 1;
+						redraw |= 1;
+					}
+				}
+				// HACK: invert channel y
+				if (event.type == SDL_MOUSEBUTTONDOWN) {
+					int m_x = event.button.x;
+					int m_y = event.button.y;
+					if ((m_x >= wv->x_ofs + 500)
+					    && (m_x < wv->x_ofs + 800)
+					    && (m_y <= 20)) {
+						wv->sbuf[1].invert_y ^= 1;
+						redraw |= 1;
+					}
+				}
+				// scrollbar
 				if (((event.type == SDL_MOUSEMOTION)
 				     || (event.type == SDL_MOUSEBUTTONDOWN)
 				     || (event.type == SDL_MOUSEBUTTONUP))) {
@@ -533,6 +568,8 @@ wview_t *wview_init(int w, int h)
 
 	sbuf[0].y_ofs = 128;	// channel y offset
 
+	sbuf[0].invert_y = 0;
+
 	sbuf[0].max_val = 127;
 	sbuf[0].min_val = -127;
 	sbuf[0].dtype = INT8;
@@ -541,6 +578,8 @@ wview_t *wview_init(int w, int h)
 //      sbuf[1].d = mf.ptr + wi->scnt;  // * 2;  // CHANGEME: short -> byte
 
 	sbuf[1].y_ofs = 256 + 128;	// channel y offset
+
+	sbuf[1].invert_y = 0;
 
 	sbuf[1].max_val = 127;
 	sbuf[1].min_val = -127;
