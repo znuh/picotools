@@ -123,7 +123,7 @@ void on_single_btn_toggled(GtkWidget * w, gpointer priv)
 	if (val)
 		res = scope_run(1);
 	else
-		scope_stop();
+		scope_stop(); // FIXME
 
 	if (res)
 		gtk_toggle_button_set_active(single_btn, 0);
@@ -418,21 +418,53 @@ void on_siggen_btn_clicked(GtkWidget * w, gpointer priv)
 	gtk_window_present(GTK_WINDOW(glade_xml_get_widget(glade, "window2")));
 }
 
+long parse_volts(const gchar *v) {
+	char *v_;
+	float fval = strtof(v, &v_)*1000000;
+	long res = fval;
+	
+	if((*v_) == 'm')
+		res /=1000;
+	
+	return res;
+}
+
+float parse_freq(const gchar *f) {
+	char *f_;
+	float fval = strtof(f, &f_);
+	
+	if((*f_) == 'k')
+		fval *= 1000;
+	else if((*f_) == 'M')
+		fval *= 1000000;
+	
+	return fval;
+}
+
 void on_siggen_apply_btn_clicked(GtkWidget * w, gpointer priv)
 {
-	long ofs;
+	long ofs, hi, low;
 	unsigned long pk2pk;
 	int wform, res;
-	float f;
+	float f, gain;
 
-	w = glade_xml_get_widget(glade, "siggen_ofs_entry");
-	ofs = strtol(gtk_entry_get_text(GTK_ENTRY(w)), NULL, 10);
-
-	w = glade_xml_get_widget(glade, "siggen_pk2pk_entry");
-	pk2pk = strtoul(gtk_entry_get_text(GTK_ENTRY(w)), NULL, 10);
-
+	w = glade_xml_get_widget(glade, "siggen_hi_entry");
+	hi = parse_volts(gtk_entry_get_text(GTK_ENTRY(w)));
+	
+	w = glade_xml_get_widget(glade, "siggen_low_entry");
+	low = parse_volts(gtk_entry_get_text(GTK_ENTRY(w)));
+	
+	w = glade_xml_get_widget(glade, "siggen_extgain_entry");
+	gain = strtof(gtk_entry_get_text(GTK_ENTRY(w)), NULL);
+	
+	hi = (float)hi / gain;
+	low = (float) low / gain;
+	
+	pk2pk = hi - low;
+	ofs = low + (pk2pk/2);
+	
 	w = glade_xml_get_widget(glade, "siggen_f_entry");
-	f = strtof(gtk_entry_get_text(GTK_ENTRY(w)), NULL);
+	f = parse_freq(gtk_entry_get_text(GTK_ENTRY(w)));
 
 	w = glade_xml_get_widget(glade, "siggen_wform_combobox");
 	wform = gtk_combo_box_get_active(GTK_COMBO_BOX(w));
