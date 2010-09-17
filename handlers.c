@@ -553,6 +553,11 @@ void init(void)
 	w = glade_xml_get_widget(glade, "trig_ofs_scale");
 	gtk_range_set_value(GTK_RANGE(w), 512);
 	on_trig_ofs_scale_value_changed(w, 0);
+	
+	/* enable CH1 by default */
+	w = glade_xml_get_widget(glade,"ch1_btn");
+	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(w), 1);
+	on_ch1_btn_toggled(w, NULL);
 
 }
 
