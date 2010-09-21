@@ -18,39 +18,76 @@ pthread_cond_t 	data_cb_cond	= PTHREAD_COND_INITIALIZER;
 
 pthread_t		data_cb_pthread;
 
+void reconf_start(void) {
+	
+	// stop
+}
+
+void reconf_done(void) {
+	
+	// reenable if stopped
+}
+
 int ps_ch_set_vrange(int ch, uint32_t *vrange) {
+	reconf_start();
+	
+	reconf_done();
 	return 0;
 }
 
 int ps_ch_enable(int ch, int *en) {
+	reconf_start();
+	
+	reconf_done();
 	return 0;
 }
 
 int ps_ch_set_cp(int ch, int *cpl) {
+	reconf_start();
+	
+	reconf_done();
 	return 0;
 }
 
 int ps_set_sbuf(uint32_t *len) {
+	reconf_start();
+	
+	reconf_done();
 	return 0;
 }
 
 int ps_set_srate(float *srate) {
+	reconf_start();
+	
+	reconf_done();
 	return 0;
 }
 
 int ps_trig_set_src(src) {
+	reconf_start();
+	
+	reconf_done();
 	return 0;
 }
 
 int ps_trig_set_edge(edge) {
+	reconf_start();
+	
+	reconf_done();
 	return 0;
 }
 
 int ps_trig_set_thres(uint32_t *thres) {
+	reconf_start();
+	
+	reconf_done();
 	return 0;
 }
 
 int ps_trig_set_ofs(float *ofs) {
+	reconf_start();
+	
+	reconf_done();
 	return 0;
 }
 
