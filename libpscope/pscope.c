@@ -6,30 +6,43 @@
 
 #include <assert.h>
 
-short handle;
-volatile int data_ready = 0;
+short 			handle;
 
-SCOPE_TYPE_t scope_type = SCOPE_NONE;
+SCOPE_TYPE_t 		scope_type 			= SCOPE_NONE;
 
 scope_config_t 	active_cfg, new_cfg;
 
-pthread_mutex_t	data_cb_mutex 	= PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t 	data_cb_cond	= PTHREAD_COND_INITIALIZER;
+pthread_mutex_t	scope_mutex 			= PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t 	data_cb_cond			= PTHREAD_COND_INITIALIZER;
 
-pthread_t		data_cb_pthread;
+pthread_t			data_cb_pthread;
+
+int 				scope_running			= 0;
+
+void run(void);
 
 void reconf_start(void) {
+	pthread_mutex_lock(&scope_mutex);
 	
 	// stop
+	if(scope_running)
+		ps5000Stop(handle);
 }
 
 void reconf_done(void) {
 	
 	// reenable if stopped
+	if(scope_running)
+		run();
+	
+	pthread_mutex_unlock(&scope_mutex);
 }
 
 int ps_ch_set_vrange(int ch, uint32_t *vrange) {
 	reconf_start();
+	
+	//return ((ps5000SetChannel(handle, scope_ch, enable, dc, range) ==
+	//	 PICO_OK) ? 0 : -1);
 	
 	reconf_done();
 	return 0;
@@ -37,6 +50,9 @@ int ps_ch_set_vrange(int ch, uint32_t *vrange) {
 
 int ps_ch_enable(int ch, int *en) {
 	reconf_start();
+
+	//return ((ps5000SetChannel(handle, scope_ch, enable, dc, range) ==
+	//	 PICO_OK) ? 0 : -1);
 	
 	reconf_done();
 	return 0;
@@ -45,12 +61,18 @@ int ps_ch_enable(int ch, int *en) {
 int ps_ch_set_cp(int ch, int *cpl) {
 	reconf_start();
 	
+	//return ((ps5000SetChannel(handle, scope_ch, enable, dc, range) ==
+	//	 PICO_OK) ? 0 : -1);
+	
 	reconf_done();
 	return 0;
 }
 
 int ps_set_sbuf(uint32_t *len) {
 	reconf_start();
+	
+	//res = ps5000GetTimebase(handle, *tbase, *buflen, &ns, 0, &samples, 0);
+	// tbase, buflen for Run, ...
 	
 	reconf_done();
 	return 0;
@@ -59,19 +81,26 @@ int ps_set_sbuf(uint32_t *len) {
 int ps_set_srate(float *srate) {
 	reconf_start();
 	
-	reconf_done();
-	return 0;
-}
-
-int ps_trig_set_src(src) {
-	reconf_start();
+	//res = ps5000GetTimebase(handle, *tbase, *buflen, &ns, 0, &samples, 0);
+	// tbase, buflen for Run, ...
 	
 	reconf_done();
 	return 0;
 }
 
-int ps_trig_set_edge(edge) {
+int ps_trig_set_src(int src) {
 	reconf_start();
+	
+	//scope_trigger_config
+	
+	reconf_done();
+	return 0;
+}
+
+int ps_trig_set_edge(int edge) {
+	reconf_start();
+	
+	//ps5000SetTriggerChannelDirections
 	
 	reconf_done();
 	return 0;
@@ -80,12 +109,16 @@ int ps_trig_set_edge(edge) {
 int ps_trig_set_thres(uint32_t *thres) {
 	reconf_start();
 	
+	//ps5000SetTriggerChannelProperties
+	
 	reconf_done();
 	return 0;
 }
 
 int ps_trig_set_ofs(float *ofs) {
 	reconf_start();
+	
+	// for Run
 	
 	reconf_done();
 	return 0;
@@ -131,9 +164,9 @@ int scope_open(int dryrun)
 void PREF4 CallBackBlock (short handle, PICO_STATUS status, void * pParameter) {
 //	data_ready = 1;
 	//printf("cb\n");
-	pthread_mutex_lock(&data_cb_mutex);
+	pthread_mutex_lock(&scope_mutex);
 	pthread_cond_signal(&data_cb_cond);
-	pthread_mutex_unlock(&data_cb_mutex);
+	pthread_mutex_unlock(&scope_mutex);
 //	printf("cb done\n");
 }
 
@@ -166,10 +199,10 @@ volatile int done = 0;
 
 void data_cb(int *bla) {
 	unsigned long cnt;
-	pthread_mutex_lock(&data_cb_mutex);
+	pthread_mutex_lock(&scope_mutex);
 	printf("data_cb enter\n");
 	while(1) {
-		pthread_cond_wait(&data_cb_cond, &data_cb_mutex);
+		pthread_cond_wait(&data_cb_cond, &scope_mutex);
 //		printf("data_cb %d\n",dcnt);
 //		ps5000Stop(handle);
 		cnt = 100000;
@@ -186,7 +219,7 @@ void data_cb(int *bla) {
 			break;
 		run();
 	}
-	pthread_mutex_unlock(&data_cb_mutex);
+	pthread_mutex_unlock(&scope_mutex);
 	done = 1;
 }
 
