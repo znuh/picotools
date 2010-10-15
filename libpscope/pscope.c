@@ -71,7 +71,7 @@ void reconf_done(void) {
 #define CFG_TRIG_CH_DIR		0x10
 
 static uint32_t cfg_update[] = {
-	CFG_CHANNEL, 		//CH_ENABLE,
+	CFG_CHANNEL | CFG_TIMEBASE, 		//CH_ENABLE,
 	CFG_CHANNEL, 		//CH_VOLTAGE_RANGE,
 	CFG_CHANNEL, 		//CH_COUPLING,
 	CFG_TIMEBASE, 		//SAMPLE_BUF_LEN,
@@ -83,58 +83,69 @@ static uint32_t cfg_update[] = {
 };
 
 int reconf(CFG_ELEM_t elem, int ch, void *p) {
+	PICO_STATUS status;
 	int res;
 	
 	reconf_start();
 
 	switch(elem) {
 		case CH_ENABLE:
-			//ps5000SetChannel(handle, scope_ch, enable, dc, range)
 			break;
 		case CH_VOLTAGE_RANGE:
-			//ps5000SetChannel(handle, scope_ch, enable, dc, range)
 			break;
 		case CH_COUPLING:
-			//ps5000SetChannel(handle, scope_ch, enable, dc, range)
 			break;
 			
 		case SAMPLE_BUF_LEN:
-			//ps5000GetTimebase(handle, *tbase, *buflen, &ns, 0, &samples, 0);
 			break;
 		case SAMPLE_RATE:
-			//ps5000GetTimebase(handle, *tbase, *buflen, &ns, 0, &samples, 0);
 			break;
+		
 		case TRIG_SOURCE:
-			//scope_trigger_config
 			break;
 		case TRIG_EDGE:
-			//ps5000SetTriggerChannelDirections
 			break;
 		case TRIG_THRESHOLD:
-			//ps5000SetTriggerChannelProperties
 			break;
 		case TRIG_OFFSET:
-			//run
 			break;
+		
 		default:
 			return -1;
 	}
 
-	if(cfg_update[elem] & CFG_CHANNEL)
-		;
-	if(cfg_update[elem] & CFG_TIMEBASE)
-		;
-	if(cfg_update[elem] & CFG_TRIG_CH_PROP)
-		;
-	if(cfg_update[elem] & CFG_TRIG_CH_COND)
-		;
-	if(cfg_update[elem] & CFG_TRIG_CH_DIR)
-		;
+	if(cfg_update[elem] & CFG_CHANNEL) {
+		//status = ps5000SetChannel(handle, scope_ch, enable, dc, range);
+		if(status != PICO_OK)
+			goto error;
+	}
+	if(cfg_update[elem] & CFG_TIMEBASE) {
+		//status = ps5000GetTimebase(handle, *tbase, *buflen, &ns, 0, &samples, 0);
+		/* TODO: give reduced srate + sbuf back to user (ptr args?) */
+		if(status != PICO_OK)
+			goto error;
+	}
+	if(cfg_update[elem] & CFG_TRIG_CH_PROP) {
+		//status = ps5000SetTriggerChannelProperties
+		if(status != PICO_OK)
+			goto error;
+	}
+	if(cfg_update[elem] & CFG_TRIG_CH_COND) {
+		//status = ps5000SetTriggerChannelConditions
+		if(status != PICO_OK)
+			goto error;
+	}
+	if(cfg_update[elem] & CFG_TRIG_CH_DIR) {
+		//status = ps5000SetTriggerChannelDirections
+		if(status != PICO_OK)
+			goto error;
+	}
 
 	// try run
 
 	// check status
 
+error:
 	// rollback if necessary
 
 	// run old cfg if necessary
