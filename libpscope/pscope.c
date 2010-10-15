@@ -18,11 +18,14 @@ pthread_cond_t 	data_cb_cond			= PTHREAD_COND_INITIALIZER;
 pthread_t			data_cb_pthread;
 
 int 				scope_running			= 0;
+int				drop_values			= 1;
 
 void run(void);
 
 void reconf_start(void) {
 	pthread_mutex_lock(&scope_mutex);
+	
+	drop_values = 1;
 	
 	// stop
 	if(scope_running)
@@ -165,6 +168,7 @@ void PREF4 CallBackBlock (short handle, PICO_STATUS status, void * pParameter) {
 //	data_ready = 1;
 	//printf("cb\n");
 	pthread_mutex_lock(&scope_mutex);
+	drop_values = 0;
 	pthread_cond_signal(&data_cb_cond);
 	pthread_mutex_unlock(&scope_mutex);
 //	printf("cb done\n");
@@ -203,6 +207,8 @@ void data_cb(int *bla) {
 	printf("data_cb enter\n");
 	while(1) {
 		pthread_cond_wait(&data_cb_cond, &scope_mutex);
+		if(drop_values)
+			continue;
 //		printf("data_cb %d\n",dcnt);
 //		ps5000Stop(handle);
 		cnt = 100000;
