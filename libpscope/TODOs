@@ -1,0 +1,6 @@
+- reconf functions
+- data cb hook for app
+- use this lib in GUI
+
+- async reconf with reconf callbacks & scope task w/ instruction-queue?
+
