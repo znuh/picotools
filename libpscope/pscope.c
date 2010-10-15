@@ -12,17 +12,26 @@ SCOPE_TYPE_t 		scope_type 			= SCOPE_NONE;
 
 scope_config_t 	active_cfg, new_cfg;
 
+
 pthread_mutex_t	scope_mutex 			= PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t 	data_cb_cond			= PTHREAD_COND_INITIALIZER;
 
 pthread_t			data_cb_pthread;
 
-int 				scope_running			= 0;
+int 			scope_running			= 0;
 int				drop_values			= 1;
+
+pthread_mutex_t	reconf_mutex 			= PTHREAD_MUTEX_INITIALIZER;
+int				reconf_active = 0;
 
 void run(void);
 
 void reconf_start(void) {
+
+	pthread_mutex_lock(&reconf_mutex);
+	reconf_active = 1;
+	pthread_mutex_unlock(&reconf_mutex);
+	
 	pthread_mutex_lock(&scope_mutex);
 	
 	drop_values = 1;
@@ -33,6 +42,10 @@ void reconf_start(void) {
 }
 
 void reconf_done(void) {
+
+	pthread_mutex_lock(&reconf_mutex);
+	reconf_active = 0;
+	pthread_mutex_unlock(&reconf_mutex);
 	
 	// reenable if stopped
 	if(scope_running)
@@ -165,12 +178,23 @@ int scope_open(int dryrun)
 }
 
 void PREF4 CallBackBlock (short handle, PICO_STATUS status, void * pParameter) {
-//	data_ready = 1;
+	int reconf_active_copy;
+	
+	pthread_mutex_lock(&reconf_mutex);
+	reconf_active_copy = reconf_active;
+	pthread_mutex_unlock(&reconf_mutex);
+
+	if(reconf_active_copy)
+		return;
+	
+	//	data_ready = 1;
 	//printf("cb\n");
+	
 	pthread_mutex_lock(&scope_mutex);
 	drop_values = 0;
 	pthread_cond_signal(&data_cb_cond);
 	pthread_mutex_unlock(&scope_mutex);
+	
 //	printf("cb done\n");
 }
 
