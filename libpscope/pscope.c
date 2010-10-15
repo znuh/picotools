@@ -24,6 +24,8 @@ int				drop_values			= 1;
 pthread_mutex_t	reconf_mutex 			= PTHREAD_MUTEX_INITIALIZER;
 int				reconf_active = 0;
 
+scope_config_t scope_config;
+
 void run(void);
 
 void reconf_start(void) {
@@ -54,11 +56,97 @@ void reconf_done(void) {
 	pthread_mutex_unlock(&scope_mutex);
 }
 
+/*
+ - create copy of old config
+ - modify config
+ - try set config + run
+ - success: return
+ - fail: restore old config, reverse *p, rerun, return
+*/
+
+#define CFG_CHANNEL			1
+#define CFG_TIMEBASE		2
+#define CFG_TRIG_CH_PROP	4
+#define CFG_TRIG_CH_COND	8
+#define CFG_TRIG_CH_DIR		0x10
+
+static uint32_t cfg_update[] = {
+	CFG_CHANNEL, 		//CH_ENABLE,
+	CFG_CHANNEL, 		//CH_VOLTAGE_RANGE,
+	CFG_CHANNEL, 		//CH_COUPLING,
+	CFG_TIMEBASE, 		//SAMPLE_BUF_LEN,
+	CFG_TIMEBASE, 		//SAMPLE_RATE,
+	CFG_TRIG_CH_PROP | CFG_TRIG_CH_COND | CFG_TRIG_CH_DIR, //TRIG_SOURCE,
+	CFG_TRIG_CH_DIR, 	//TRIG_EDGE,
+	CFG_TRIG_CH_PROP, 	//TRIG_THRESHOLD,
+	0, 					//TRIG_OFFSET,
+};
+
+int reconf(CFG_ELEM_t elem, int ch, void *p) {
+	int res;
+	
+	reconf_start();
+
+	switch(elem) {
+		case CH_ENABLE:
+			//ps5000SetChannel(handle, scope_ch, enable, dc, range)
+			break;
+		case CH_VOLTAGE_RANGE:
+			//ps5000SetChannel(handle, scope_ch, enable, dc, range)
+			break;
+		case CH_COUPLING:
+			//ps5000SetChannel(handle, scope_ch, enable, dc, range)
+			break;
+			
+		case SAMPLE_BUF_LEN:
+			//ps5000GetTimebase(handle, *tbase, *buflen, &ns, 0, &samples, 0);
+			break;
+		case SAMPLE_RATE:
+			//ps5000GetTimebase(handle, *tbase, *buflen, &ns, 0, &samples, 0);
+			break;
+		case TRIG_SOURCE:
+			//scope_trigger_config
+			break;
+		case TRIG_EDGE:
+			//ps5000SetTriggerChannelDirections
+			break;
+		case TRIG_THRESHOLD:
+			//ps5000SetTriggerChannelProperties
+			break;
+		case TRIG_OFFSET:
+			//run
+			break;
+		default:
+			return -1;
+	}
+
+	if(cfg_update[elem] & CFG_CHANNEL)
+		;
+	if(cfg_update[elem] & CFG_TIMEBASE)
+		;
+	if(cfg_update[elem] & CFG_TRIG_CH_PROP)
+		;
+	if(cfg_update[elem] & CFG_TRIG_CH_COND)
+		;
+	if(cfg_update[elem] & CFG_TRIG_CH_DIR)
+		;
+
+	// try run
+
+	// check status
+
+	// rollback if necessary
+
+	// run old cfg if necessary
+	
+	reconf_done();
+	
+	return 0;
+}
+
+#if 0
 int ps_ch_set_vrange(int ch, uint32_t *vrange) {
 	reconf_start();
-	
-	//return ((ps5000SetChannel(handle, scope_ch, enable, dc, range) ==
-	//	 PICO_OK) ? 0 : -1);
 	
 	reconf_done();
 	return 0;
@@ -139,6 +227,7 @@ int ps_trig_set_ofs(float *ofs) {
 	reconf_done();
 	return 0;
 }
+#endif
 
 int ps_run(int mode) {
 	return 0;

@@ -25,6 +25,18 @@ typedef enum {
 	SCOPE_PS5204 = 5204
 } SCOPE_TYPE_t;
 
+typedef enum {
+	CH_ENABLE,
+	CH_VOLTAGE_RANGE,
+	CH_COUPLING,
+	SAMPLE_BUF_LEN,
+	SAMPLE_RATE,
+	TRIG_SOURCE,
+	TRIG_EDGE,
+	TRIG_THRESHOLD,
+	TRIG_OFFSET,
+} CFG_ELEM_t;
+
 typedef struct scope_config_s {
 
 	// channels
