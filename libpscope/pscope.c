@@ -1,16 +1,15 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <assert.h>
 
 #include "pscope.h"
-
-#include <assert.h>
 
 short 			handle;
 
 SCOPE_TYPE_t 		scope_type 			= SCOPE_NONE;
 
-scope_config_t 	active_cfg, new_cfg;
+ps_cfg_t 	ps_cfg;
 
 
 pthread_mutex_t	scope_mutex 			= PTHREAD_MUTEX_INITIALIZER;
@@ -23,8 +22,6 @@ int				drop_values			= 1;
 
 pthread_mutex_t	reconf_mutex 			= PTHREAD_MUTEX_INITIALIZER;
 int				reconf_active = 0;
-
-scope_config_t scope_config;
 
 void run(void);
 
@@ -56,6 +53,12 @@ void reconf_done(void) {
 	pthread_mutex_unlock(&scope_mutex);
 }
 
+
+/* TODO:
+	- user config with changed flags
+	- reconf: apply changed values from user config, mark changed values?
+*/
+
 /*
  - create copy of old config
  - modify config
@@ -69,10 +72,12 @@ void reconf_done(void) {
 #define CFG_TRIG_CH_PROP	4
 #define CFG_TRIG_CH_COND	8
 #define CFG_TRIG_CH_DIR		0x10
+#define CFG_SIGGEN			0x20
 
 static uint32_t cfg_update[] = {
 	CFG_CHANNEL | CFG_TIMEBASE, 		//CH_ENABLE,
 	CFG_CHANNEL, 		//CH_VOLTAGE_RANGE,
+	0,					//CH_VOLTAGE_OFFSET,  //not supported by picoscope
 	CFG_CHANNEL, 		//CH_COUPLING,
 	CFG_TIMEBASE, 		//SAMPLE_BUF_LEN,
 	CFG_TIMEBASE, 		//SAMPLE_RATE,
@@ -80,9 +85,11 @@ static uint32_t cfg_update[] = {
 	CFG_TRIG_CH_DIR, 	//TRIG_EDGE,
 	CFG_TRIG_CH_PROP, 	//TRIG_THRESHOLD,
 	0, 					//TRIG_OFFSET,
+	CFG_SIGGEN,			//SIGGEN
 };
 
 int reconf(CFG_ELEM_t elem, int ch, void *p) {
+	PS5000_CHANNEL ps_ch = PS5000_CHANNEL_A; // TODO
 	PICO_STATUS status;
 	int res;
 	
@@ -115,18 +122,28 @@ int reconf(CFG_ELEM_t elem, int ch, void *p) {
 	}
 
 	if(cfg_update[elem] & CFG_CHANNEL) {
-		//status = ps5000SetChannel(handle, scope_ch, enable, dc, range);
+		status = ps5000SetChannel(handle,
+		                          ps_ch,
+		                          ps_cfg.ch[ch].enabled, 
+		                          ps_cfg.ch[ch].enabled, 
+		                          ps_cfg.ch[ch].range);
 		if(status != PICO_OK)
 			goto error;
 	}
 	if(cfg_update[elem] & CFG_TIMEBASE) {
-		//status = ps5000GetTimebase(handle, *tbase, *buflen, &ns, 0, &samples, 0);
+		status = ps5000GetTimebase(handle, 
+		                           ps_cfg.tbase.tbase, 
+		                           ps_cfg.tbase.samples,
+		                           &ps_cfg.tbase.timeval,
+		                           0, 
+		                           &ps_cfg.tbase.samples,
+		                           0);
 		/* TODO: give reduced srate + sbuf back to user (ptr args?) */
 		if(status != PICO_OK)
 			goto error;
 	}
 	if(cfg_update[elem] & CFG_TRIG_CH_PROP) {
-		//status = ps5000SetTriggerChannelProperties
+//		status = ps5000SetTriggerChannelProperties(
 		if(status != PICO_OK)
 			goto error;
 	}
@@ -137,6 +154,17 @@ int reconf(CFG_ELEM_t elem, int ch, void *p) {
 	}
 	if(cfg_update[elem] & CFG_TRIG_CH_DIR) {
 		//status = ps5000SetTriggerChannelDirections
+		if(status != PICO_OK)
+			goto error;
+	}
+	if(cfg_update[elem] & CFG_SIGGEN) {
+		status = ps5000SetSigGenBuiltIn(handle, 
+		                                ps_cfg.siggen.offset, 
+		                                ps_cfg.siggen.pk2pk, 
+		                                ps_cfg.siggen.wvtype, 
+		                                ps_cfg.siggen.freq, 
+		                                ps_cfg.siggen.freq, 
+		                                0, 0, 0, 0,  0, 0, 0, 0, 0);
 		if(status != PICO_OK)
 			goto error;
 	}

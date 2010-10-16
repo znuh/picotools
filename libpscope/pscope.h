@@ -28,6 +28,7 @@ typedef enum {
 typedef enum {
 	CH_ENABLE,
 	CH_VOLTAGE_RANGE,
+	CH_VOLTAGE_OFFSET,
 	CH_COUPLING,
 	SAMPLE_BUF_LEN,
 	SAMPLE_RATE,
@@ -35,51 +36,59 @@ typedef enum {
 	TRIG_EDGE,
 	TRIG_THRESHOLD,
 	TRIG_OFFSET,
+	SIGGEN,
 } CFG_ELEM_t;
 
-typedef struct scope_config_s {
+typedef struct ps_ch_cfg_s {	
+	short enabled;
+	short dc;
+	PS5000_RANGE range;
+} ps_ch_cfg_t;
+
+typedef struct ps_tbase_cfg_s {
+	unsigned long tbase;	// timebase
+	long samples;			// number of samples
+	long timeval;			// time interval in ns
+	long max_samples;		// max samples at given timebase
+} ps_tbase_cfg_t;
+
+typedef struct ps_trig_cfg_s {
+	short enable;
+	PS5000_CHANNEL ch;
+	short level;
+	THRESHOLD_DIRECTION dir;
+//	TRIGGER_CONDITIONS cond;			// depends on trig. src
+//	THRESHOLD_DIRECTION dir;			// depends on trig. edge
+//	TRIGGER_CHANNEL_PROPERTIES prop;	// depends on trig. src + trg. voltage
+} ps_trig_cfg_t;
+
+typedef struct ps_siggen_cfg_s {
+	long offset;
+	unsigned long pk2pk;
+	short wvtype;
+	float freq;
+} ps_siggen_cfg_t;
+
+// TODO: siggen
+
+typedef struct ps_cfg_s {
 
 	// channels
-	PS5000_RANGE range[2];
-	float f_range[2];
-	uint8_t channel_config;	// (AC/DC, enabled) * 2
+	ps_ch_cfg_t ch[2];
 
-	// number of samples
-	unsigned long samples;
+	// timebase
+	ps_tbase_cfg_t tbase;
 
-	// timebase (srate)
-	unsigned long timebase;
+	ps_trig_cfg_t trig;
 
-	PS5000_CHANNEL trig_ch;
-	int trig_enabled;
-	short trig_level;
-
-	// depends on trig. src
-	TRIGGER_CONDITIONS trig_cond;
-
-	// depends on trig. edge
-	THRESHOLD_DIRECTION trig_dir;
-
-	// depends on trig. src + trg. voltage
-	TRIGGER_CHANNEL_PROPERTIES trig_prop;
+	ps_siggen_cfg_t siggen;
 
 	// trigger ofs
-	unsigned long trig_ofs;
-	unsigned long pre_trig;
-	unsigned long post_trig;
+//	unsigned long trig_ofs;
+//	unsigned long pre_trig;
+//	unsigned long post_trig;
 
-	/*
-	   chA
-	   chB
-	   number of samples
-	   timebase
-	   trig_cond
-	   trig_dir
-	   trig_prop
-	   trig_ofs
-	 */
-	unsigned long changed;	// TODO
-} scope_config_t;
+} ps_cfg_t;
 
 /*
 int scope_open(int dryrun);
