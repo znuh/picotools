@@ -25,20 +25,6 @@ typedef enum {
 	SCOPE_PS5204 = 5204
 } SCOPE_TYPE_t;
 
-typedef enum {
-	CH_ENABLE,
-	CH_VOLTAGE_RANGE,
-	CH_VOLTAGE_OFFSET,
-	CH_COUPLING,
-	SAMPLE_BUF_LEN,
-	SAMPLE_RATE,
-	TRIG_SOURCE,
-	TRIG_EDGE,
-	TRIG_THRESHOLD,
-	TRIG_OFFSET,
-	SIGGEN,
-} CFG_ELEM_t;
-
 typedef struct ps_ch_cfg_s {	
 	short enabled;
 	short dc;
@@ -57,9 +43,6 @@ typedef struct ps_trig_cfg_s {
 	PS5000_CHANNEL ch;
 	short level;
 	THRESHOLD_DIRECTION dir;
-//	TRIGGER_CONDITIONS cond;			// depends on trig. src
-//	THRESHOLD_DIRECTION dir;			// depends on trig. edge
-//	TRIGGER_CHANNEL_PROPERTIES prop;	// depends on trig. src + trg. voltage
 } ps_trig_cfg_t;
 
 typedef struct ps_siggen_cfg_s {
@@ -68,8 +51,6 @@ typedef struct ps_siggen_cfg_s {
 	short wvtype;
 	float freq;
 } ps_siggen_cfg_t;
-
-// TODO: siggen
 
 typedef struct ps_cfg_s {
 
@@ -83,23 +64,6 @@ typedef struct ps_cfg_s {
 
 	ps_siggen_cfg_t siggen;
 
-	// trigger ofs
-//	unsigned long trig_ofs;
-//	unsigned long pre_trig;
-//	unsigned long post_trig;
-
 } ps_cfg_t;
-
-/*
-int scope_open(int dryrun);
-void scope_close(void);
-int scope_channel_config(int ch);
-int scope_sample_config(unsigned long *tbase, unsigned long *buflen);
-int scope_run(int single);
-void scope_stop(void);
-int scope_trigger_config(void);
-void viewer_close(void);
-int scope_siggen_config(long ofs, unsigned long pk2pk, float f, short wform);
-*/
 
 #endif
