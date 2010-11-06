@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <stdlib.h>
+#include <pthread.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
@@ -28,6 +29,17 @@
 #include <string.h>
 #include <assert.h>
 #include "wview/wview.h"
+
+pthread_mutex_t	scope_mutex 			= PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t 	data_cb_cond			= PTHREAD_COND_INITIALIZER;
+
+pthread_t			data_cb_pthread;
+
+int 			scope_running			= 0;
+int				drop_values			= 1;
+
+pthread_mutex_t	reconf_mutex 			= PTHREAD_MUTEX_INITIALIZER;
+int				reconf_active = 0;
 
 static unsigned long capture_cnt = 0;
 
@@ -52,6 +64,10 @@ wview_t *wv = NULL;
 
 GMutex *mutex = NULL;
 GCond *cond = NULL;
+
+void scope_stop(void);
+
+int scope_run(int single);
 
 void wview_thread(void)
 {
@@ -142,6 +158,34 @@ void release_wave(uint8_t * ptr)
 {
 }
 
+void reconf_start(void) {
+
+	pthread_mutex_lock(&reconf_mutex);
+	reconf_active = 1;
+	pthread_mutex_unlock(&reconf_mutex);
+	
+	pthread_mutex_lock(&scope_mutex);
+	
+	drop_values = 1;
+	
+	// stop
+	if(scope_running)
+		scope_stop();
+}
+
+void reconf_done(void) {
+
+	pthread_mutex_lock(&reconf_mutex);
+	reconf_active = 0;
+	pthread_mutex_unlock(&reconf_mutex);
+	
+	// reenable if stopped
+	if(scope_running)
+		scope_run(0);
+	
+	pthread_mutex_unlock(&scope_mutex);
+}
+
 int scope_open(int dryrun)
 {
 	char line[80];
@@ -187,15 +231,21 @@ int scope_channel_config(int ch)
 	short enable = (scope_config.channel_config >> ch) & 1;
 	short dc = (scope_config.channel_config >> (ch + 2)) & 1;
 	PS5000_RANGE range = scope_config.range[ch];
-
+	int res;
+	
 	printf("ch %d: %s %s %d\n", scope_ch, enable ? "enable" : "",
 	       dc ? "DC" : "AC", range);
 
 	if (!scope_type)
 		return 0;
 
-	return ((ps5000SetChannel(handle, scope_ch, enable, dc, range) ==
-		 PICO_OK) ? 0 : -1);
+	reconf_start();
+	
+	res=(ps5000SetChannel(handle, scope_ch, enable, dc, range) ==
+		 PICO_OK) ? 0 : -1;
+	
+	reconf_done();
+	return res;
 }
 
 int scope_sample_config(unsigned long *tbase, unsigned long *buflen)
@@ -207,7 +257,11 @@ int scope_sample_config(unsigned long *tbase, unsigned long *buflen)
 	if (!scope_type)
 		return 0;
 
+	reconf_start();
+	
 	res = ps5000GetTimebase(handle, *tbase, *buflen, &ns, 0, &samples, 0);
+	
+	reconf_done();
 
 	printf("%ld: %ld ns %ld samples\n", res, ns, samples);
 
@@ -304,21 +358,7 @@ void save_ascii(char *fname, short *d1, short *d2, waveinfo_t * wi)
 	fclose(fl);
 }
 
-void scope_stop(void)
-{
-	if (!scope_type)
-		return;
-	//printf("stop\n");
-	ps5000Stop(handle);
-}
-
-void rerun_thread(void)
-{
-	//usleep(1000);         //TODO: fixme - use auto mode
-	scope_run(0);
-}
-
-void PREF4 CallBackBlock(short handle, PICO_STATUS status, void *pParameter)
+void read_data(void)
 {
 	//char fname[64], buf[128] = "./wview/wview ";
 	waveinfo_t wi;
@@ -326,11 +366,8 @@ void PREF4 CallBackBlock(short handle, PICO_STATUS status, void *pParameter)
 	time_t now = time(NULL);
 	short *d1 = d, *d2 = d;
 	int channels = scope_config.channel_config;
-	int run_again = 0;
-
-	// notify gui
-	run_again = scope_done();
-
+	int run_again = scope_done();
+	
 	scope_stop();
 
 	//printf("done scnt %ld status %ld\n", scnt, status);
@@ -353,6 +390,10 @@ void PREF4 CallBackBlock(short handle, PICO_STATUS status, void *pParameter)
 
 	assert(ps5000GetValues
 	       (handle, 0, &scnt, 1, RATIO_MODE_NONE, 0, NULL) == PICO_OK);
+	
+	// start new run immediately - cb will be delayed until copy done (=mutex unlocked)
+	if(run_again)
+		scope_run(0);
 
 	wi.magic = WVINFO_MAGIC;
 	wi.capture_time = now;
@@ -387,9 +428,55 @@ void PREF4 CallBackBlock(short handle, PICO_STATUS status, void *pParameter)
 	copy_wave(waves, d1, d2, &wi);	// TODO: triplebuffer w/ locking
 	notify_viewer(waves);
 
-	if (run_again)
-		g_thread_create((GThreadFunc) rerun_thread, NULL, FALSE, NULL);
+}
 
+void PREF4 CallBackBlock (short handle, PICO_STATUS status, void * pParameter) {
+	int reconf_active_copy;
+	
+	pthread_mutex_lock(&reconf_mutex);
+	reconf_active_copy = reconf_active;
+	pthread_mutex_unlock(&reconf_mutex);
+
+	if(reconf_active_copy)
+		return;
+	
+	//	data_ready = 1;
+	//printf("cb\n");
+	
+	pthread_mutex_lock(&scope_mutex);
+	drop_values = 0;
+	pthread_cond_signal(&data_cb_cond);
+	pthread_mutex_unlock(&scope_mutex);
+	
+//	printf("cb done\n");
+}
+
+void data_cb(int *bla) {
+	
+	pthread_mutex_lock(&scope_mutex);
+	
+	printf("data_cb enter\n");
+
+	while(1) {
+		
+		pthread_cond_wait(&data_cb_cond, &scope_mutex);
+		
+		if(drop_values)
+			continue;
+				
+		// read here
+		read_data();
+
+	}
+	pthread_mutex_unlock(&scope_mutex);
+}
+
+void scope_stop(void)
+{
+	if (!scope_type)
+		return;
+	//printf("stop\n");
+	ps5000Stop(handle);
 }
 
 int scope_run(int single)
@@ -422,6 +509,8 @@ int scope_trigger_config(void)
 
 	if (!scope_type)
 		return res;
+	
+	reconf_start();
 
 	if (scope_config.changed & SCOPE_CHANGED_TRIG_PROP) {
 		// depends on channel & voltage
@@ -507,9 +596,11 @@ int scope_trigger_config(void)
 	      SCOPE_CHANGED_TRIG_DIR);
 
 	//printf("trigger cfg fine???\n");
+	reconf_done();
 	return res;
 
  error:
+	reconf_done();
 	printf("trigger cfg error\n");
 	return res;
 }
@@ -522,6 +613,8 @@ int scope_siggen_config(long ofs, unsigned long pk2pk, float f, short wform)
 	if (!scope_type)
 		return ret;
 
+	reconf_start();
+	
 	res =
 	    ps5000SetSigGenBuiltIn(handle, ofs, pk2pk, wform, f, f, 0, 0, 0, 0,
 				   0, 0, 0, 0, 0);
@@ -545,6 +638,8 @@ int scope_siggen_config(long ofs, unsigned long pk2pk, float f, short wform)
 	default:
 		ret = -5;
 	}
+	
+	reconf_done();
 
 	return ret;
 }
