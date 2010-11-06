@@ -170,7 +170,7 @@ void reconf_start(void) {
 	
 	// stop
 	if(scope_running)
-		scope_stop();
+		ps5000Stop(handle);
 }
 
 void reconf_done(void) {
@@ -473,6 +473,7 @@ void data_cb(int *bla) {
 
 void scope_stop(void)
 {
+	scope_running = 0;
 	if (!scope_type)
 		return;
 	//printf("stop\n");
@@ -485,8 +486,11 @@ int scope_run(int single)
 	unsigned long pre = scope_config.pre_trig, post =
 	    scope_config.post_trig;
 
+	scope_stop();
+	scope_running = 0;
+
 	if (!scope_type)
-		return 0;
+		return 0;	
 
 	if (!(scope_config.trig_enabled)) {
 		post += pre;
@@ -499,6 +503,8 @@ int scope_run(int single)
 
 	if (res != PICO_OK)
 		printf("run FAIL: %lx\n", res);
+	else
+		scope_running = 1;
 
 	return ((res == PICO_OK) ? 0 : -1);
 }
