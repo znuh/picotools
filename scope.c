@@ -69,6 +69,8 @@ void scope_stop(void);
 
 int scope_run(int single);
 
+void data_cb(int *bla);
+
 void wview_thread(void)
 {
 	g_mutex_lock(mutex);
@@ -206,6 +208,8 @@ int scope_open(int dryrun)
 		assert((scope_type == SCOPE_PS5204)
 		       || (scope_type == SCOPE_PS5203));
 
+		pthread_create(&data_cb_pthread, NULL, (void *) data_cb, NULL);
+
 	}
 
 	viewer_init();
@@ -221,6 +225,8 @@ void scope_close(void)
 		return;
 	ps5000CloseUnit(handle);
 	scope_type = SCOPE_NONE;
+
+	pthread_join(data_cb_pthread, NULL);
 
 	viewer_destroy();
 }
