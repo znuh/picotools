@@ -392,6 +392,7 @@ int scope_run(int s) {
 	scope_config.run = s ? 1 : 2;
 	_scope_config = scope_config;
 	scope_config.changed=0;
+	_scope_config.changed |= SCOPE_CHANGED_RUN;
 	pthread_cond_signal(&scope_cond);
 	pthread_mutex_unlock(&scope_mutex);
 	return 0;
@@ -437,6 +438,7 @@ void scope_stop(void) {
 	scope_config.run = 0;
 	_scope_config = scope_config;
 	scope_config.changed=0;
+	_scope_config.changed |= SCOPE_CHANGED_RUN;
 	pthread_cond_signal(&scope_cond);
 	pthread_mutex_unlock(&scope_mutex);	
 }

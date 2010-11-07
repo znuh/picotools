@@ -99,7 +99,8 @@ gboolean timeout(gpointer data)
 	scope_config.timebase = tbase;
 	scope_config.samples = sbuf_len;
 
-	printf("%d: timebase %ld buf_len %ld\n", res, tbase, sbuf_len);
+	if(res)
+		fprintf(stderr,"%d: timebase %ld buf_len %ld\n", res, tbase, sbuf_len);
 
 	reconf_timer_active = 0;
 	return FALSE;
@@ -269,7 +270,7 @@ void update_samples(void)
 
 	if ((scope_config.channel_config & 3) == 3) {
 		strcpy(ch_str, "2x ");
-		sbuf_len /= 2;
+		//sbuf_len /= 2;
 	}
 	//printf("%lx\n",sbuf_len);
 	if (sbuf_len < 1000000)
