@@ -123,7 +123,7 @@ void on_single_btn_toggled(GtkWidget * w, gpointer priv)
 	if (val)
 		res = scope_run(1);
 	else
-		scope_stop(); // FIXME
+		scope_stop();
 
 	if (res)
 		gtk_toggle_button_set_active(single_btn, 0);
@@ -136,6 +136,8 @@ void on_auto_btn_toggled(GtkWidget * w, gpointer priv)
 
 	if (val)
 		res = scope_run(0);
+	else
+		scope_stop();
 }
 
 /***************** channel config **************************/

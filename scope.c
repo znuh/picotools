@@ -75,8 +75,14 @@ void scope_stop(void);
 static int scope_quit;
 static int cb_quit;
 
-void PREF4 CallBackBlock (short handle, PICO_STATUS status, void * pParameter) {	
+static int cb_waiting = 0;
+static int cb_drop = 0;
+
+int scope_done(void);
+
+void PREF4 CallBackBlock (short handle, PICO_STATUS status, void * pParameter) {
 	pthread_mutex_lock(&cb_mutex);
+	cb_waiting = 1;
 	pthread_cond_signal(&cb_cond);
 	pthread_mutex_unlock(&cb_mutex);
 }
@@ -85,20 +91,26 @@ void cb_process(int *bla) {
 	
 	while(1) {
 		pthread_mutex_lock(&cb_mutex);
+		cb_waiting = 0;
 		pthread_cond_wait(&cb_cond, &cb_mutex);	
 		
 		if(cb_quit)
 			break;
 
-		// TODO
+		// TODO?
 		pthread_mutex_unlock(&cb_mutex);
 
+		scope_done();
+
 		pthread_mutex_lock(&scope_mutex);
-		_scope_config.changed |= SCOPE_DATA_CB;
-		pthread_cond_signal(&scope_cond);
+		if(!cb_drop) {
+			_scope_config.changed |= SCOPE_DATA_CB;
+			pthread_cond_signal(&scope_cond);
+		}
+		cb_drop = 0;
 		pthread_mutex_unlock(&scope_mutex);
 	}
-	pthread_mutex_unlock(&scope_mutex);
+	pthread_mutex_unlock(&cb_mutex);
 }
 
 void wview_thread(void)
@@ -287,8 +299,6 @@ int _scope_sample_config(unsigned long *tbase, unsigned long *buflen)
 	return ((res == PICO_OK) ? 0 : -1);
 }
 
-int scope_done(void);
-
 void copy_wave(uint8_t * dst, short *d1, short *d2, waveinfo_t * wi)
 {
 	uint8_t *d;
@@ -404,6 +414,12 @@ int _scope_run(void)
 		pre = 0;
 	}
 	//printf("%ld %ld\n", pre, post);
+
+	pthread_mutex_lock(&cb_mutex);
+	if(cb_waiting)
+		cb_drop = 1;
+	pthread_mutex_unlock(&cb_mutex);
+	
 	res =
 	    ps5000RunBlock(handle, pre, post, _scope_config.timebase, 0, NULL, 0,
 			   CallBackBlock, NULL);
@@ -696,7 +712,7 @@ void scope_process(int *bla) {
 		}
 
 		_scope_config.changed = 0;
-		
+
 	} while(!scope_quit);
 	
 	pthread_mutex_unlock(&scope_mutex);

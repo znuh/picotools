@@ -1,3 +1,7 @@
+- trigger
+- siggen
+- extra mutex + process for wave copy to viewer
+
 0.1:
     wview:
 	+ scrollbar
