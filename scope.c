@@ -31,9 +31,13 @@
 #include "wview/wview.h"
 
 pthread_mutex_t	scope_mutex 			= PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t 	data_cb_cond			= PTHREAD_COND_INITIALIZER;
+pthread_cond_t 	scope_cond			= PTHREAD_COND_INITIALIZER;
 
-pthread_t			data_cb_pthread;
+pthread_mutex_t	cb_mutex 			= PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t 	cb_cond			= PTHREAD_COND_INITIALIZER;
+
+pthread_t			cb_pthread;
+pthread_t			scope_pthread;
 
 int 			scope_running			= 0;
 int				drop_values			= 1;
@@ -43,6 +47,7 @@ int				reconf_active = 0;
 
 static unsigned long capture_cnt = 0;
 
+scope_config_t _scope_config;
 scope_config_t scope_config;
 
 short handle;
@@ -67,9 +72,34 @@ GCond *cond = NULL;
 
 void scope_stop(void);
 
-int scope_run(int single);
+static int scope_quit;
+static int cb_quit;
 
-void data_cb(int *bla);
+void PREF4 CallBackBlock (short handle, PICO_STATUS status, void * pParameter) {	
+	pthread_mutex_lock(&cb_mutex);
+	pthread_cond_signal(&cb_cond);
+	pthread_mutex_unlock(&cb_mutex);
+}
+
+void cb_process(int *bla) {
+	
+	while(1) {
+		pthread_mutex_lock(&cb_mutex);
+		pthread_cond_wait(&cb_cond, &cb_mutex);	
+		
+		if(cb_quit)
+			break;
+
+		// TODO
+		pthread_mutex_unlock(&cb_mutex);
+
+		pthread_mutex_lock(&scope_mutex);
+		_scope_config.changed |= SCOPE_DATA_CB;
+		pthread_cond_signal(&scope_cond);
+		pthread_mutex_unlock(&scope_mutex);
+	}
+	pthread_mutex_unlock(&scope_mutex);
+}
 
 void wview_thread(void)
 {
@@ -160,6 +190,7 @@ void release_wave(uint8_t * ptr)
 {
 }
 
+#if 0
 void reconf_start(void) {
 
 	pthread_mutex_lock(&reconf_mutex);
@@ -187,89 +218,71 @@ void reconf_done(void) {
 	
 	pthread_mutex_unlock(&scope_mutex);
 }
+#endif
 
-int scope_open(int dryrun)
-{
-	char line[80];
-	short i, r = 0;
-	PICO_STATUS res = PICO_OK;
+int scope_channel_config(int ch) {
+	pthread_mutex_lock(&scope_mutex);
+	_scope_config = scope_config;
+	_scope_config.changed |= ch ? SCOPE_CHANGED_CH2 : SCOPE_CHANGED_CH1;
+	scope_config.changed=0;
+	pthread_cond_signal(&scope_cond);
+	pthread_mutex_unlock(&scope_mutex);
 
-	if (!dryrun) {
-
-		res = ps5000OpenUnit(&handle);
-		assert(res == PICO_OK);
-
-		for (i = 0; i < 5; i++) {
-			ps5000GetUnitInfo(handle, line, sizeof(line), &r, i);
-			if (i == 3)
-				scope_type = atoi(line);
-			//printf("%s\n", line);
-		}
-		assert((scope_type == SCOPE_PS5204)
-		       || (scope_type == SCOPE_PS5203));
-
-		pthread_create(&data_cb_pthread, NULL, (void *) data_cb, NULL);
-
-	}
-
-	viewer_init();
-//      res = ps5000SetSigGenBuiltIn(handle, 0, 3000000, 0, (float)1000000.0, (float)1000000., 0, 0, 0, 0, 0, 0, 0, 0, 0);
-//      printf("%ld %lx\n",res,res);
-//      assert(res == PICO_OK);
 	return 0;
 }
 
-void scope_close(void)
-{
-	if (!scope_type)
-		return;
-	ps5000CloseUnit(handle);
-	scope_type = SCOPE_NONE;
-
-	pthread_join(data_cb_pthread, NULL);
-
-	viewer_destroy();
-}
-
-int scope_channel_config(int ch)
+int _scope_channel_config(int ch)
 {
 	PS5000_CHANNEL scope_ch = ch ? PS5000_CHANNEL_B : PS5000_CHANNEL_A;
-	short enable = (scope_config.channel_config >> ch) & 1;
-	short dc = (scope_config.channel_config >> (ch + 2)) & 1;
-	PS5000_RANGE range = scope_config.range[ch];
+	short enable = (_scope_config.channel_config >> ch) & 1;
+	short dc = (_scope_config.channel_config >> (ch + 2)) & 1;
+	PS5000_RANGE range = _scope_config.range[ch];
 	int res;
 	
-	printf("ch %d: %s %s %d\n", scope_ch, enable ? "enable" : "",
-	       dc ? "DC" : "AC", range);
+//	printf("ch %d: %s %s %d\n", scope_ch, enable ? "enable" : "",
+	//       dc ? "DC" : "AC", range);
 
-	if (!scope_type)
-		return 0;
+//	if (!scope_type)
+	//	return 0;
 
-	reconf_start();
+	//reconf_start();
 	
 	res=(ps5000SetChannel(handle, scope_ch, enable, dc, range) ==
 		 PICO_OK) ? 0 : -1;
 	
-	reconf_done();
+	//reconf_done();
 	return res;
 }
 
-int scope_sample_config(unsigned long *tbase, unsigned long *buflen)
+int scope_sample_config(unsigned long *tbase, unsigned long *buflen) {
+	pthread_mutex_lock(&scope_mutex);
+	scope_config.timebase = *tbase;
+	scope_config.samples = *buflen;
+	_scope_config = scope_config;
+	_scope_config.changed |= (SCOPE_CHANGED_TIMEBASE | SCOPE_CHANGED_SAMPLES);
+	scope_config.changed=0;	
+	pthread_cond_signal(&scope_cond);
+	pthread_mutex_unlock(&scope_mutex);
+
+	return 0;
+}
+
+int _scope_sample_config(unsigned long *tbase, unsigned long *buflen)
 {
 	long ns;
 	long samples;
 	PICO_STATUS res;
-
+/*
 	if (!scope_type)
 		return 0;
 
 	reconf_start();
-	
+	*/
 	res = ps5000GetTimebase(handle, *tbase, *buflen, &ns, 0, &samples, 0);
 	
-	reconf_done();
+//	reconf_done();
 
-	printf("%ld: %ld ns %ld samples\n", res, ns, samples);
+	//printf("%ld: %ld ns %ld samples\n", res, ns, samples);
 
 	return ((res == PICO_OK) ? 0 : -1);
 }
@@ -364,42 +377,94 @@ void save_ascii(char *fname, short *d1, short *d2, waveinfo_t * wi)
 	fclose(fl);
 }
 
+int scope_run(int s) {
+	pthread_mutex_lock(&scope_mutex);
+	scope_config.run = s ? 1 : 2;
+	_scope_config = scope_config;
+	scope_config.changed=0;
+	pthread_cond_signal(&scope_cond);
+	pthread_mutex_unlock(&scope_mutex);
+	return 0;
+}
+
+int _scope_run(void)
+{
+	PICO_STATUS res;
+	unsigned long pre = _scope_config.pre_trig, post =
+	    _scope_config.post_trig;
+
+//	scope_stop();
+//	scope_running = 0;
+
+//	if (!scope_type)
+//		return 0;	
+
+	if (!(_scope_config.trig_enabled)) {
+		post += pre;
+		pre = 0;
+	}
+	//printf("%ld %ld\n", pre, post);
+	res =
+	    ps5000RunBlock(handle, pre, post, _scope_config.timebase, 0, NULL, 0,
+			   CallBackBlock, NULL);
+
+	if (res != PICO_OK)
+		printf("run FAIL: %lx\n", res);
+	else
+		scope_running = 1;
+
+	return ((res == PICO_OK) ? 0 : -1);
+}
+	
+void scope_stop(void) {
+	pthread_mutex_lock(&scope_mutex);
+	scope_config.run = 0;
+	_scope_config = scope_config;
+	scope_config.changed=0;
+	pthread_cond_signal(&scope_cond);
+	pthread_mutex_unlock(&scope_mutex);	
+}
+
 void read_data(void)
 {
 	//char fname[64], buf[128] = "./wview/wview ";
 	waveinfo_t wi;
-	unsigned long scnt = scope_config.samples;
+	unsigned long scnt = _scope_config.samples;
 	time_t now = time(NULL);
 	short *d1 = d, *d2 = d;
-	int channels = scope_config.channel_config;
-	int run_again = scope_done();
+	int channels = _scope_config.channel_config;
+	PICO_STATUS res;
+//	int run_again = scope_done();
 	
-	scope_stop();
+//	scope_stop();
 
 	//printf("done scnt %ld status %ld\n", scnt, status);
 
 	if ((channels & 3) == 3)
-		d2 = d1 + scope_config.samples;
+		d2 = d1 + _scope_config.samples;
 
 	// 1st channel active
 	if ((channels >> 0) & 1) {
 		assert(ps5000SetDataBuffer
 		       (handle, PS5000_CHANNEL_A, d1,
-			scope_config.samples) == PICO_OK);
+			_scope_config.samples) == PICO_OK);
 	}
 	// 2nd channel active
 	if ((channels >> 1) & 1) {
 		assert(ps5000SetDataBuffer
 		       (handle, PS5000_CHANNEL_B, d2,
-			scope_config.samples) == PICO_OK);
+			_scope_config.samples) == PICO_OK);
 	}
 
-	assert(ps5000GetValues
-	       (handle, 0, &scnt, 1, RATIO_MODE_NONE, 0, NULL) == PICO_OK);
-	
+	res = ps5000GetValues
+	       (handle, 0, &scnt, 1, RATIO_MODE_NONE, 0, NULL);
+
 	// start new run immediately - cb will be delayed until copy done (=mutex unlocked)
-	if(run_again)
-		scope_run(0);
+	if(_scope_config.run == 2)
+		_scope_run();
+
+	if(res != PICO_OK)
+		return;
 
 	wi.magic = WVINFO_MAGIC;
 	wi.capture_time = now;
@@ -407,17 +472,17 @@ void read_data(void)
 
 	wi.scnt = scnt;
 
-	if (scope_config.trig_enabled)
-		wi.pre = scope_config.pre_trig;
+	if (_scope_config.trig_enabled)
+		wi.pre = _scope_config.pre_trig;
 	else
 		wi.pre = 0;
 
 	wi.ns = ns;
 
-	wi.scale[0] = scope_config.f_range[0] / (PS5000_MAX_VALUE >> 8);
-	wi.scale[1] = scope_config.f_range[1] / (PS5000_MAX_VALUE >> 8);
+	wi.scale[0] = _scope_config.f_range[0] / (PS5000_MAX_VALUE >> 8);
+	wi.scale[1] = _scope_config.f_range[1] / (PS5000_MAX_VALUE >> 8);
 
-	wi.ch_config = scope_config.channel_config;
+	wi.ch_config = _scope_config.channel_config;
 
 	/*
 	   sprintf(fname, "%ld.txt", now);
@@ -436,48 +501,8 @@ void read_data(void)
 
 }
 
-void PREF4 CallBackBlock (short handle, PICO_STATUS status, void * pParameter) {
-	int reconf_active_copy;
-	
-	pthread_mutex_lock(&reconf_mutex);
-	reconf_active_copy = reconf_active;
-	pthread_mutex_unlock(&reconf_mutex);
-
-	if(reconf_active_copy)
-		return;
-	
-	//	data_ready = 1;
-	//printf("cb\n");
-	
-	pthread_mutex_lock(&scope_mutex);
-	drop_values = 0;
-	pthread_cond_signal(&data_cb_cond);
-	pthread_mutex_unlock(&scope_mutex);
-	
-//	printf("cb done\n");
-}
-
-void data_cb(int *bla) {
-	
-	pthread_mutex_lock(&scope_mutex);
-	
-	printf("data_cb enter\n");
-
-	while(1) {
-		
-		pthread_cond_wait(&data_cb_cond, &scope_mutex);
-		
-		if(drop_values)
-			continue;
-				
-		// read here
-		read_data();
-
-	}
-	pthread_mutex_unlock(&scope_mutex);
-}
-
-void scope_stop(void)
+#if 0
+void _scope_stop(void)
 {
 	scope_running = 0;
 	if (!scope_type)
@@ -485,56 +510,37 @@ void scope_stop(void)
 	//printf("stop\n");
 	ps5000Stop(handle);
 }
+#endif
 
-int scope_run(int single)
-{
-	PICO_STATUS res;
-	unsigned long pre = scope_config.pre_trig, post =
-	    scope_config.post_trig;
-
-	scope_stop();
-	scope_running = 0;
-
-	if (!scope_type)
-		return 0;	
-
-	if (!(scope_config.trig_enabled)) {
-		post += pre;
-		pre = 0;
-	}
-	//printf("%ld %ld\n", pre, post);
-	res =
-	    ps5000RunBlock(handle, pre, post, scope_config.timebase, 0, NULL, 0,
-			   CallBackBlock, NULL);
-
-	if (res != PICO_OK)
-		printf("run FAIL: %lx\n", res);
-	else
-		scope_running = 1;
-
-	return ((res == PICO_OK) ? 0 : -1);
+int scope_trigger_config(void) {
+	pthread_mutex_lock(&scope_mutex);
+	_scope_config = scope_config;
+	scope_config.changed=0;
+	pthread_cond_signal(&scope_cond);
+	pthread_mutex_unlock(&scope_mutex);
+	return 0;
 }
 
-int scope_trigger_config(void)
+int _scope_trigger_config(void)
 {
 	PICO_STATUS res = PICO_OK;
-
+/*
 	if (!scope_type)
 		return res;
 	
 	reconf_start();
-
-	if (scope_config.changed & SCOPE_CHANGED_TRIG_PROP) {
+*/
+	if (_scope_config.changed & SCOPE_CHANGED_TRIG_PROP) {
 		// depends on channel & voltage
-		scope_config.trig_prop.channel = scope_config.trig_ch;
-		scope_config.trig_prop.thresholdMode = LEVEL;
-		scope_config.trig_prop.hysteresis = 0;
-		scope_config.trig_prop.thresholdMinor = scope_config.trig_level;
-		scope_config.trig_prop.thresholdMajor = scope_config.trig_level;
+		_scope_config.trig_prop.channel = _scope_config.trig_ch;
+		_scope_config.trig_prop.thresholdMode = LEVEL;
+		_scope_config.trig_prop.hysteresis = 0;
+		_scope_config.trig_prop.thresholdMinor = _scope_config.trig_level;
+		_scope_config.trig_prop.thresholdMajor = _scope_config.trig_level;
 		res =
 		    ps5000SetTriggerChannelProperties(handle,
-						      &(scope_config.trig_prop),
-						      (scope_config.trig_enabled
+						      &(_scope_config.trig_prop),
+						      (_scope_config.trig_enabled
 						       ? 1 : 0), 1, 0);
 		if (res != PICO_OK) {
 			printf("SetTriggerChannelProperties: %ld\n", res);
@@ -542,33 +548,33 @@ int scope_trigger_config(void)
 		}
 	}
 
-	if (scope_config.changed & SCOPE_CHANGED_TRIG_COND) {
+	if (_scope_config.changed & SCOPE_CHANGED_TRIG_COND) {
 		// depends on channel
 
 		// defaults
-		scope_config.trig_cond.channelA = CONDITION_DONT_CARE;
-		scope_config.trig_cond.channelB = CONDITION_DONT_CARE;
-		scope_config.trig_cond.channelC = CONDITION_DONT_CARE;
-		scope_config.trig_cond.channelD = CONDITION_DONT_CARE;
-		scope_config.trig_cond.external = CONDITION_DONT_CARE;
-		scope_config.trig_cond.aux = CONDITION_DONT_CARE;
-		scope_config.trig_cond.pulseWidthQualifier =
+		_scope_config.trig_cond.channelA = CONDITION_DONT_CARE;
+		_scope_config.trig_cond.channelB = CONDITION_DONT_CARE;
+		_scope_config.trig_cond.channelC = CONDITION_DONT_CARE;
+		_scope_config.trig_cond.channelD = CONDITION_DONT_CARE;
+		_scope_config.trig_cond.external = CONDITION_DONT_CARE;
+		_scope_config.trig_cond.aux = CONDITION_DONT_CARE;
+		_scope_config.trig_cond.pulseWidthQualifier =
 		    CONDITION_DONT_CARE;
 
-		if (scope_config.trig_ch == PS5000_CHANNEL_A)
-			scope_config.trig_cond.channelA = CONDITION_TRUE;
-		else if (scope_config.trig_ch == PS5000_CHANNEL_B)
-			scope_config.trig_cond.channelB = CONDITION_TRUE;
-		else if (scope_config.trig_ch == PS5000_EXTERNAL)
-			scope_config.trig_cond.external = CONDITION_TRUE;
-		else if (scope_config.trig_enabled) {
+		if (_scope_config.trig_ch == PS5000_CHANNEL_A)
+			_scope_config.trig_cond.channelA = CONDITION_TRUE;
+		else if (_scope_config.trig_ch == PS5000_CHANNEL_B)
+			_scope_config.trig_cond.channelB = CONDITION_TRUE;
+		else if (_scope_config.trig_ch == PS5000_EXTERNAL)
+			_scope_config.trig_cond.external = CONDITION_TRUE;
+		else if (_scope_config.trig_enabled) {
 			printf("IARGH!?!?!\n");
 		}
 
 		res =
 		    ps5000SetTriggerChannelConditions(handle,
-						      &(scope_config.trig_cond),
-						      (scope_config.trig_enabled
+						      &(_scope_config.trig_cond),
+						      (_scope_config.trig_enabled
 						       ? 1 : 0));
 		if (res != PICO_OK) {
 			printf("SetTriggerChannelConditions: %ld\n", res);
@@ -576,19 +582,19 @@ int scope_trigger_config(void)
 		}
 	}
 
-	if (scope_config.changed & SCOPE_CHANGED_TRIG_DIR) {
+	if (_scope_config.changed & SCOPE_CHANGED_TRIG_DIR) {
 		THRESHOLD_DIRECTION dir[6] =
 		    { NONE, NONE, NONE, NONE, NONE, NONE };
 
-		//printf("ch %d edge %d\n",scope_config.trig_ch, scope_config.trig_dir);
+		//printf("ch %d edge %d\n",_scope_config.trig_ch, _scope_config.trig_dir);
 
-		if (scope_config.trig_ch == PS5000_CHANNEL_A)
-			dir[0] = scope_config.trig_dir;
-		else if (scope_config.trig_ch == PS5000_CHANNEL_B)
-			dir[1] = scope_config.trig_dir;
-		else if (scope_config.trig_ch == PS5000_EXTERNAL)
-			dir[4] = scope_config.trig_dir;
-		else if (scope_config.trig_enabled) {
+		if (_scope_config.trig_ch == PS5000_CHANNEL_A)
+			dir[0] = _scope_config.trig_dir;
+		else if (_scope_config.trig_ch == PS5000_CHANNEL_B)
+			dir[1] = _scope_config.trig_dir;
+		else if (_scope_config.trig_ch == PS5000_EXTERNAL)
+			dir[4] = _scope_config.trig_dir;
+		else if (_scope_config.trig_enabled) {
 			printf("IARGH!?!?!\n");
 		}
 		//printf("%d %d %d\n",dir[0],dir[1],dir[2]);
@@ -603,16 +609,16 @@ int scope_trigger_config(void)
 		}
 	}
 
-	scope_config.changed &=
+	_scope_config.changed &=
 	    ~(SCOPE_CHANGED_TRIG_PROP | SCOPE_CHANGED_TRIG_DIR |
 	      SCOPE_CHANGED_TRIG_DIR);
 
 	//printf("trigger cfg fine???\n");
-	reconf_done();
+	//reconf_done();
 	return res;
 
  error:
-	reconf_done();
+	//reconf_done();
 	printf("trigger cfg error\n");
 	return res;
 }
@@ -621,12 +627,12 @@ int scope_siggen_config(long ofs, unsigned long pk2pk, float f, short wform)
 {
 	int ret = 0;
 	PICO_STATUS res;
-
+/*
 	if (!scope_type)
 		return ret;
 
 	reconf_start();
-	
+	*/
 	res =
 	    ps5000SetSigGenBuiltIn(handle, ofs, pk2pk, wform, f, f, 0, 0, 0, 0,
 				   0, 0, 0, 0, 0);
@@ -651,7 +657,108 @@ int scope_siggen_config(long ofs, unsigned long pk2pk, float f, short wform)
 		ret = -5;
 	}
 	
-	reconf_done();
+//	reconf_done();
 
 	return ret;
 }
+
+void scope_process(int *bla) {
+
+	pthread_mutex_lock(&scope_mutex);
+	
+	do {
+		pthread_cond_wait(&scope_cond, &scope_mutex);
+
+		ps5000Stop(handle);
+
+		if(_scope_config.changed != SCOPE_DATA_CB) {
+
+			if(_scope_config.changed & SCOPE_CHANGED_CH1)
+				_scope_channel_config(0);
+
+			if(_scope_config.changed & SCOPE_CHANGED_CH2)
+				_scope_channel_config(1);
+
+			if(_scope_config.changed & (SCOPE_CHANGED_SAMPLES | SCOPE_CHANGED_TIMEBASE))
+				_scope_sample_config(&_scope_config.timebase, &_scope_config.samples);
+
+			if(_scope_config.changed & (SCOPE_CHANGED_TRIG_COND | SCOPE_CHANGED_TRIG_DIR | SCOPE_CHANGED_TRIG_PROP | SCOPE_CHANGED_TRIG_PROP))
+				_scope_trigger_config();
+
+			if(_scope_config.run)
+				_scope_run();
+			
+		}
+		else {
+			read_data();
+			if(_scope_config.run == 1) // single
+				_scope_config.run = 0;
+		}
+
+		_scope_config.changed = 0;
+		
+	} while(!scope_quit);
+	
+	pthread_mutex_unlock(&scope_mutex);
+}
+
+int scope_open(int dryrun)
+{
+	char line[80];
+	short i, r = 0;
+	PICO_STATUS res = PICO_OK;
+
+	if (!dryrun) {
+
+		res = ps5000OpenUnit(&handle);
+		assert(res == PICO_OK);
+
+		for (i = 0; i < 5; i++) {
+			ps5000GetUnitInfo(handle, line, sizeof(line), &r, i);
+			if (i == 3)
+				scope_type = atoi(line);
+			//printf("%s\n", line);
+		}
+		assert((scope_type == SCOPE_PS5204)
+		       || (scope_type == SCOPE_PS5203));
+
+		cb_quit = 0;
+		pthread_create(&cb_pthread, NULL, (void *) cb_process, NULL);
+		
+		scope_quit = 0;
+		pthread_create(&scope_pthread, NULL, (void *) scope_process, NULL);
+
+	}
+
+	viewer_init();
+//      res = ps5000SetSigGenBuiltIn(handle, 0, 3000000, 0, (float)1000000.0, (float)1000000., 0, 0, 0, 0, 0, 0, 0, 0, 0);
+//      printf("%ld %lx\n",res,res);
+//      assert(res == PICO_OK);
+	return 0;
+}
+	
+void scope_close(void)
+{
+	if (!scope_type)
+		return;
+
+	pthread_mutex_lock(&cb_mutex);
+	cb_quit = 1;
+	pthread_cond_signal(&cb_cond);
+	pthread_mutex_unlock(&cb_mutex);
+
+	pthread_join(cb_pthread, NULL);
+
+	pthread_mutex_lock(&scope_mutex);
+	scope_quit = 1;
+	pthread_cond_signal(&scope_cond);
+	pthread_mutex_unlock(&scope_mutex);
+
+	pthread_join(scope_pthread, NULL);
+	
+	ps5000CloseUnit(handle);
+	scope_type = SCOPE_NONE;
+
+	viewer_destroy();
+}
+	

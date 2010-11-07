@@ -26,6 +26,9 @@
 #define SCOPE_CHANGED_TRIG_DIR		(1<<5)
 #define SCOPE_CHANGED_TRIG_PROP	(1<<6)
 #define SCOPE_CHANGED_TRIG_OFS	(1<<7)
+#define SCOPE_DATA_CB			(1<<8)
+#define SCOPE_CHANGED_RUN		(1<<9)
+#define SCOPE_CHANGED_SIGGEN	(1<<10)
 
 typedef enum {
 	SCOPE_NONE,
@@ -74,7 +77,8 @@ typedef struct scope_config_s {
 	   trig_prop
 	   trig_ofs
 	 */
-	unsigned long changed;	// TODO
+	int run;
+	unsigned long changed;
 } scope_config_t;
 
 int scope_open(int dryrun);
