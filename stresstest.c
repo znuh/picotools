@@ -9,7 +9,7 @@
 short 			handle;
 
 void PREF4 CallBackBlock (short handle, PICO_STATUS status, void * pParameter) {
-	fputc('.', stderr);
+	fputs("cb\n", stderr);
 }
 
 /*
@@ -28,14 +28,6 @@ void trigger_setup(void)
 	TRIGGER_CONDITIONS cond;
 	THRESHOLD_DIRECTION dir[6] = { RISING, NONE, NONE, NONE, NONE, NONE };
 
-	prop.channel = PS5000_CHANNEL_A;
-	prop.thresholdMode = LEVEL;
-	prop.hysteresis = 0;
-	prop.thresholdMinor = 0;
-	prop.thresholdMajor = 100;
-	res = ps5000SetTriggerChannelProperties(handle, &prop, 1, 1, 0);
-	assert(res == PICO_OK);
-
 	cond.channelA = CONDITION_TRUE;
 	cond.channelB = CONDITION_DONT_CARE;
 	cond.channelC = CONDITION_DONT_CARE;
@@ -43,14 +35,21 @@ void trigger_setup(void)
 	cond.external = CONDITION_DONT_CARE;
 	cond.aux = CONDITION_DONT_CARE;
 	cond.pulseWidthQualifier = CONDITION_DONT_CARE;
-
 	res = ps5000SetTriggerChannelConditions(handle, &cond, 1);
 	assert(res == PICO_OK);
-	
+
 	res = ps5000SetTriggerChannelDirections(handle, dir[0], dir[1],
 						      dir[2], dir[3], dir[4],
 						      dir[5]);
 	assert(res == PICO_OK);
+	
+	prop.channel = PS5000_CHANNEL_A;
+	prop.thresholdMode = LEVEL;
+	prop.hysteresis = 0;
+	prop.thresholdMinor = 1<<15;
+	prop.thresholdMajor = 1<<15;
+	res = ps5000SetTriggerChannelProperties(handle, &prop, 1, 1, 0);
+	assert(res == PICO_OK);	
 }
 
 int main(int argc, char **argv) {
@@ -70,25 +69,27 @@ int main(int argc, char **argv) {
 
 	if(argc>1) {
 		trigger_setup();
-		fprintf(stderr,"trigger set\n");
+		fputs("trigger set\n", stderr);
 	}
 
-	fprintf(stderr,"press Ctrl+D to quit\n");
+	fputs("press Ctrl+D to quit\n", stderr);
 	
 	while(!feof(stdin)) {
 
-		fputc('+', stderr);
+		fputs("run\n", stderr);
 		fflush(stderr);
 		
 		res = ps5000RunBlock(handle, buflen/2, buflen-(buflen/2), tbase, 0, NULL, 0, CallBackBlock, NULL);
 		assert(res == PICO_OK);
 
-		fputc('*', stderr);
+		fputs("stop\n", stderr);
 		fflush(stderr);
 
 		res = ps5000Stop(handle);
 		assert(res == PICO_OK);
 		
+		if(argc>2)
+			trigger_setup();	
 	}
 
 	ps5000CloseUnit(handle);
