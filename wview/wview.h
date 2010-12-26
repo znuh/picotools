@@ -17,11 +17,11 @@ typedef enum {
 	DOUBLE
 } DTYPE_t;
 
-typedef struct samplebuf_s {
+typedef struct __attribute__((__packed__)) samplebuf_s {
 	void *d;
 	DTYPE_t dtype;
 
-	int y_ofs;
+	int32_t y_ofs;
 
 	float min_val;
 	float max_val;
@@ -33,11 +33,11 @@ typedef struct samplebuf_s {
 	//int scale;
 } samplebuf_t;
 
-typedef struct wview_s {
+typedef struct __attribute__((__packed__)) wview_s {
 	//mf_t mf;
 
 	samplebuf_t *sbuf;
-	int sbuf_cnt;
+	int32_t sbuf_cnt;
 
 	waveinfo_t *wi;
 
@@ -47,12 +47,12 @@ typedef struct wview_s {
 
 	//unsigned long trigger_ofs;
 
-	unsigned long x_pos, y_pos;
-	unsigned long x_cnt, y_cnt;
+	uint32_t x_pos, y_pos;
+	uint32_t x_cnt, y_cnt;
 
-	unsigned long x_ofs, y_ofs;
-	unsigned long target_w, target_h;
-} wview_t;
+	uint32_t x_ofs, y_ofs;
+	uint32_t target_w, target_h;
+}  wview_t;
 
 wview_t *wview_init(int w, int h);
 void event_loop(wview_t * wv);

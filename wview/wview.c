@@ -13,6 +13,11 @@
 #include "scrollbar.h"
 #include "wvfile.h"
 
+long int u32_to_long(uint32_t in) {
+	long int res = in;
+	return res;
+}
+
 float samplebuf_get_sample(samplebuf_t * s, unsigned long sample)
 {
 	void *d = s->d;
@@ -128,6 +133,7 @@ void draw_text(wview_t * wv)
 	SDL_Color color = { 128, 128, 128 };
 	char buf[200];
 	float val;
+	time_t tbuf;
 
 	// start
 	val = wv->wi->pre;
@@ -167,7 +173,8 @@ void draw_text(wview_t * wv)
 		    wv->y_ofs + wv->target_h, color);
 
 	// date
-	strcpy(buf, ctime(&(wv->wi->capture_time)));
+	tbuf = wv->wi->capture_time;
+	strcpy(buf, ctime(&tbuf));
 	buf[strlen(buf) - 1] = 0;
 	render_text(buf, wv->x_ofs, 2, color);
 
@@ -181,7 +188,7 @@ void draw_text(wview_t * wv)
 	render_text(buf, wv->x_ofs + 800, 2, color);
 
 	// capture counter
-	sprintf(buf, "%6ld", wv->wi->capture_cnt);
+	sprintf(buf, "%6ld", u32_to_long(wv->wi->capture_cnt));
 	render_text(buf, -10, 2, color);
 
 	// V/div ch 1
@@ -378,7 +385,7 @@ void wv_save_wave(wview_t * wv)
 	if (wv->sbuf_cnt == 2)
 		len *= 2;
 
-	sprintf(buf, "%ld.wv", wv->wi->capture_time);
+	sprintf(buf, "%ld.wv", u32_to_long(wv->wi->capture_time));
 	fd = open(buf, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
 	if (fd < 0)
 		return;
