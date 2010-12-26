@@ -56,6 +56,9 @@ typedef struct __attribute__((__packed__)) wview_s {
 
 	SDL_Surface *wv_sf;
 	SDL_Rect wv_rect;
+
+	int x_mark1, x_mark2;
+	
 }  wview_t;
 
 wview_t *wview_init(int w, int h);

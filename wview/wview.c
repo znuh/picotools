@@ -229,6 +229,23 @@ void draw_text(wview_t * wv)
 
 }
 
+void draw_marks(wview_t *wv) {
+	char buf[64]="dt: ";
+	//int y_ofs = wv->y_ofs;
+	int dist = ABS(wv->x_mark2 - wv->x_mark1);
+	float ns_per_sample = wv->wi->ns;
+	float samples_per_pixel = ((float)wv->x_cnt / (float)wv->target_w);
+	float ns_per_pixel = ns_per_sample * samples_per_pixel;
+	float val=dist * ns_per_pixel;
+	SDL_Color color = { 128, 128, 128 };
+
+	vlineColor(sdl.screen, wv->x_ofs + wv->x_mark1, wv->y_ofs, wv->y_ofs+wv->target_h, 0xffffff8f);
+	vlineColor(sdl.screen, wv->x_ofs + wv->x_mark2, wv->y_ofs, wv->y_ofs+wv->target_h, 0xffffff8f);
+
+	print_time(buf+4, val);
+	render_text(buf, -200, wv->y_ofs + wv->target_h, color);
+}
+
 void draw_grid(wview_t * wv)
 {
 	int y_ofs = wv->y_ofs;
@@ -450,6 +467,9 @@ void event_loop(wview_t * wv)
 	uint8_t *wavedata = NULL;
 	int redraw = SB_VALS_CHANGED;
 	int initialized = 0;
+	int mark1_selected=0;
+	int mark2_selected=0;
+	int mark_modified;
 
 	assert(sb);
 
@@ -464,6 +484,7 @@ void event_loop(wview_t * wv)
 
 		// aggregate events
 		while (SDL_PollEvent(&event)) {
+			mark_modified = 0;
 
 			if (event.type == SDL_QUIT)
 				return;
@@ -501,6 +522,50 @@ void event_loop(wview_t * wv)
 						redraw |= 1;
 					}
 				}
+				if((mark1_selected) && (event.type == SDL_MOUSEMOTION)) {
+					int m_x = event.button.x;
+					wv->x_mark1 = m_x - 10;
+					if(wv->x_mark1 < 0)
+						wv->x_mark1 = 0;
+					if(wv->x_mark1 > wv->target_w)
+						wv->x_mark1 = wv->target_w;
+					mark_modified = 1;
+					redraw=1;
+				}
+				if((mark2_selected) && (event.type == SDL_MOUSEMOTION)) {
+					int m_x = event.button.x;
+					wv->x_mark2 = m_x - 10;
+					if(wv->x_mark2 < 0)
+						wv->x_mark2 = 0;
+					if(wv->x_mark2 > wv->target_w)
+						wv->x_mark2 = wv->target_w;
+					mark_modified = 1;
+					redraw=1;
+				}
+				if(event.type == SDL_MOUSEBUTTONUP) {
+					mark1_selected = 0;
+					mark2_selected = 0;
+				}
+				// adjust mark1/2
+				if(event.type == SDL_MOUSEBUTTONDOWN) {
+					int m_x = event.button.x;
+					int m_y = event.button.y;
+					int diff1, diff2;
+					int mark=1;
+					if((m_y <= 20) || (m_y >= (20 + wv->target_h)))
+						mark=0;
+					if((m_x < 10) || (m_x > (10 + wv->target_w)))
+						mark=0;
+					diff1 = ABS(wv->x_mark1 - (m_x - 10));
+					diff2 = ABS(wv->x_mark2 - (m_x - 10));
+					//printf("%d %d\n",diff1,diff2);
+					if(mark) {
+						if(diff1 <= diff2)
+							mark1_selected = 1;
+						else
+							mark2_selected = 1;
+					}
+				}
 				// scrollbar
 				if (((event.type == SDL_MOUSEMOTION)
 				     || (event.type == SDL_MOUSEBUTTONDOWN)
@@ -514,7 +579,7 @@ void event_loop(wview_t * wv)
 		if (request_wave(&wavedata)) {
 			load_wave(wv, wavedata);
 			initialized = 1;
-			redraw = 1;
+			redraw = ~0;
 		}
 
 		if (!(initialized))
@@ -527,20 +592,22 @@ void event_loop(wview_t * wv)
 		if (redraw) {
 			// TODO: don't redraw everything all the time
 			SDL_FillRect(sdl.screen, NULL, 0xff000000);
-			SDL_FillRect(wv->wv_sf, NULL, 0x00000000);
 
-			//if(redraw & SB_CHANGED)
 			// always redraw scrollbar otherwise it'll disappear
 			scrollbar_draw(sb);
 
-			//if (redraw & SB_VALS_CHANGED)
-			wview_redraw(wv);
+			/* scale changed */
+			if (redraw & SB_VALS_CHANGED) {
+				SDL_FillRect(wv->wv_sf, NULL, 0x00000000);
+				wview_redraw(wv);
+			}
 
 			release_wave(wavedata);
 
 			SDL_BlitSurface(wv->wv_sf, NULL, sdl.screen, &wv->wv_rect);
 			draw_grid(wv);
 			draw_text(wv);
+			draw_marks(wv);
 
 			SDL_Flip(sdl.screen);
 		}
