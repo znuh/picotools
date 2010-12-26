@@ -508,7 +508,7 @@ void event_loop(wview_t * wv)
 					    && (m_x < wv->x_ofs + 500)
 					    && (m_y <= 20)) {
 						wv->sbuf[0].invert_y ^= 1;
-						redraw |= 1;
+						redraw = ~0;
 					}
 				}
 				// HACK: invert channel y
@@ -519,7 +519,7 @@ void event_loop(wview_t * wv)
 					    && (m_x < wv->x_ofs + 800)
 					    && (m_y <= 20)) {
 						wv->sbuf[1].invert_y ^= 1;
-						redraw |= 1;
+						redraw = ~0;
 					}
 				}
 				if((mark1_selected) && (event.type == SDL_MOUSEMOTION)) {
