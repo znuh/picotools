@@ -5,6 +5,7 @@
 
 #include "mmap.h"
 #include "wvfile.h"
+#include "sdl_display.h"
 
 typedef enum {
 	INT8,
@@ -52,6 +53,9 @@ typedef struct __attribute__((__packed__)) wview_s {
 
 	uint32_t x_ofs, y_ofs;
 	uint32_t target_w, target_h;
+
+	SDL_Surface *wv_sf;
+	SDL_Rect wv_rect;
 }  wview_t;
 
 wview_t *wview_init(int w, int h);

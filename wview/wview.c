@@ -267,9 +267,6 @@ void wview_redraw(wview_t * wv)
 	//printf("%f\n",step);
 	//printf("x_cnt %d\n",wv->x_cnt);
 	
-	draw_grid(wv);
-	draw_text(wv);
-
 	// foreach sample buffer
 	for (buf_cnt = 0; buf_cnt < wv->sbuf_cnt; buf_cnt++) {
 		samplebuf_t *sbuf = &(wv->sbuf[buf_cnt]);
@@ -304,10 +301,10 @@ void wview_redraw(wview_t * wv)
 
 				// trigger
 				if ((!trigger_done)
-				    && (wv->x_pos + scnt >= wv->wi->pre)) {
-					vlineColor(sdl.screen, wv->x_ofs + x,
-						   y_ofs + 1,
-						   y_ofs + wv->target_h - 2,
+				    && (scnt >= wv->wi->pre)) {
+					vlineColor(wv->wv_sf, x,
+						   1,
+						   wv->target_h - 2,
 						   0x80ff8080);
 					trigger_done = 1;
 				}
@@ -319,9 +316,9 @@ void wview_redraw(wview_t * wv)
 				upper = pixel_from_sample(sbuf, max_val);
 
 				if (lower != upper) {
-					vlineColor(sdl.screen, wv->x_ofs + x,
-						   wv->y_ofs + lower,
-						   wv->y_ofs + upper,
+					vlineColor(wv->wv_sf, x,
+						   lower,
+						   upper,
 						   color[buf_cnt]);
 					did_vline = 1;
 				}
@@ -330,23 +327,19 @@ void wview_redraw(wview_t * wv)
 
 					if (lower < last_upper) {
 						// rising
-						aalineColor(sdl.screen,
-							    wv->x_ofs + x - 1,
-							    wv->y_ofs +
-							    last_upper,
-							    wv->x_ofs + x,
-							    wv->y_ofs +
-							    lower,
+						aalineColor(wv->wv_sf,
+							    x - 1,
+						    	last_upper,
+							    x,
+						    	lower,
 							    color[buf_cnt]);
 					} else if ((upper > last_lower)
 						   || (!did_vline)) {
 						// falling OR no line done yet
-						aalineColor(sdl.screen,
-							    wv->x_ofs + x - 1,
-							    wv->y_ofs +
+						aalineColor(wv->wv_sf,
+							    x - 1,
 							    last_lower,
-							    wv->x_ofs + x,
-							    wv->y_ofs +
+							    x,
 							    upper,
 							    color[buf_cnt]);
 					}
@@ -370,8 +363,8 @@ void wview_redraw(wview_t * wv)
 
 	// trigger
 	if (!trigger_done) {
-		vlineColor(sdl.screen, wv->x_ofs + x, y_ofs + 1,
-			   y_ofs + wv->target_h - 2, 0x80ff8080);
+		vlineColor(wv->wv_sf, x, 1,
+			   wv->target_h - 2, 0x80ff8080);
 		trigger_done = 1;
 	}
 }
@@ -534,6 +527,7 @@ void event_loop(wview_t * wv)
 		if (redraw) {
 			// TODO: don't redraw everything all the time
 			SDL_FillRect(sdl.screen, NULL, 0xff000000);
+			SDL_FillRect(wv->wv_sf, NULL, 0x00000000);
 
 			//if(redraw & SB_CHANGED)
 			// always redraw scrollbar otherwise it'll disappear
@@ -543,6 +537,10 @@ void event_loop(wview_t * wv)
 			wview_redraw(wv);
 
 			release_wave(wavedata);
+
+			SDL_BlitSurface(wv->wv_sf, NULL, sdl.screen, &wv->wv_rect);
+			draw_grid(wv);
+			draw_text(wv);
 
 			SDL_Flip(sdl.screen);
 		}
@@ -567,6 +565,11 @@ wview_t *wview_init(int w, int h)
 	wv->y_ofs = 20;
 	wv->target_w = w;
 	wv->target_h = h;
+
+	wv->wv_rect.x = 10;
+	wv->wv_rect.y = 20;
+	wv->wv_rect.w = w;
+	wv->wv_rect.h = h;
 
 	assert((sbuf = malloc(sizeof(samplebuf_t) * 2)));
 	wv->sbuf = sbuf;
@@ -596,6 +599,9 @@ wview_t *wview_init(int w, int h)
 
 	sdl_init(wv->target_w + wv->x_ofs * 2,
 		 wv->target_h + wv->y_ofs * 2 + 30);
+
+	assert((wv->wv_sf = SDL_CreateRGBSurface(SDL_HWSURFACE, w, h, 32, 0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000)));
+	SDL_SetAlpha(wv->wv_sf, 0, 0);
 
 	assert(!TTF_Init());
 
