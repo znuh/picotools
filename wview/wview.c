@@ -258,14 +258,15 @@ void wview_redraw(wview_t * wv)
 	uint32_t color[] = { 0x8080ffff, 0xff8080ff };
 	int y_ofs = wv->y_ofs;
 	unsigned long scnt;
-	int samples_per_pixel = wv->x_cnt / wv->target_w;
+	float pixels_per_sample = ((float)wv->target_w / (float)wv->x_cnt);
+	float x_f = 0;
 	int buf_cnt;
 	int trigger_done = 0;
 	int x = 0;
 
+	//printf("%f\n",step);
 	//printf("x_cnt %d\n",wv->x_cnt);
-	//printf("%ld samples/pixel\n",samples_per_pixel);
-
+	
 	draw_grid(wv);
 	draw_text(wv);
 
@@ -282,6 +283,7 @@ void wview_redraw(wview_t * wv)
 			   color[buf_cnt]);
 
 		x = 0;
+		x_f = 0.0;
 
 		// foreach sample
 		for (scnt = 0; scnt < wv->x_cnt; scnt++) {
@@ -295,9 +297,9 @@ void wview_redraw(wview_t * wv)
 			if (val < min_val)
 				min_val = val;
 
-			// TODO: draw every m'th pixel with alpha
+			x_f += pixels_per_sample;
 
-			if (!((scnt + 1) % samples_per_pixel)) {
+			if(((int)x_f) > x) {
 				int did_vline = 0;
 
 				// trigger
@@ -357,14 +359,14 @@ void wview_redraw(wview_t * wv)
 				max_val = sbuf->min_val;
 				min_val = sbuf->max_val;
 
-				x++;
-			}
-			// cropping seems to be a better option than using non-constant samples_per_pixel
-			if (x == wv->target_w)
-				break;
-		}
+				x = (int)x_f;
+			} // draw
+			
+		} // foreach sample
+		
 		//printf("x: %d\n", x);
-	}
+		
+	} // foreach sample buffer
 
 	// trigger
 	if (!trigger_done) {
