@@ -49,7 +49,7 @@ int main(int argc, char **argv)
 		wi->pre = 0;
 		wi->ns = 1;
 		wi->ch_config = 1;
-		wi->scale[0] = wi->scale[1] = 1;
+		wi->scale[0] = wi->scale[1] = 0.0;
 
 		wv->sbuf[0].y_ofs = 256;	// channel y offset
 		wv->sbuf[0].invert_y = 0;
