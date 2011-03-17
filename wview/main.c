@@ -24,6 +24,7 @@ void release_wave(uint8_t * ptr)
 
 int main(int argc, char **argv)
 {
+	waveinfo_t *wi;
 	wview_t *wv = NULL;
 	mf_t mf;
 
@@ -33,9 +34,36 @@ int main(int argc, char **argv)
 
 	assert((wv = wview_init(1024, 512)));
 
-	//load_wave(wv, mf.ptr);
-	wptr = mf.ptr;
+	wi = (waveinfo_t *) mf.ptr;
+	assert(mf.len >= sizeof(waveinfo_t));
 
+	if (wi->magic != WVINFO_MAGIC) {
+		printf("loading raw file\n");
+		wptr = malloc(mf.len + sizeof(waveinfo_t));
+		wi = (waveinfo_t *) wptr;
+		memcpy(wptr + sizeof(waveinfo_t), mf.ptr, mf.len);
+		wi->magic = WVINFO_MAGIC;
+		wi->capture_time = 0;
+		wi->capture_cnt = 0;
+		wi->scnt = mf.len;
+		wi->pre = 0;
+		wi->ns = 1;
+		wi->ch_config = 1;
+		wi->scale[0] = wi->scale[1] = 1;
+
+		wv->sbuf[0].y_ofs = 256;	// channel y offset
+		wv->sbuf[0].invert_y = 0;
+		wv->sbuf[0].max_val = 255;
+		wv->sbuf[0].min_val = 0;
+		wv->sbuf[0].dtype = UINT8;
+
+		unmap_file(&mf);
+	}
+	else {
+		//load_wave(wv, mf.ptr);
+		wptr = mf.ptr;
+	}
+	   
 	event_loop(wv);
 
 	// wview_destroy - unmap file, free
