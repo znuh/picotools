@@ -192,24 +192,26 @@ void draw_text(wview_t * wv)
 	render_text(buf, -10, 2, color);
 
 	// V/div ch 1
-	val = ((float)wv->target_h * wv->wi->scale[0]) / (float)V_DIVS;
-	print_volt(buf, val);
-	color.r = 0x80;
-	color.g = 0x80;
-	color.b = 0xff;
-	strcat(buf, "/div ");
-	if (wv->wi->ch_config & 4)
-		strcat(buf, "DC");
-	else
-		strcat(buf, "AC");
+	if (wv->wi->ch_config & 1) {
+		val = ((float)wv->target_h * wv->wi->scale[0]) / (float)V_DIVS;
+		print_volt(buf, val);
+		color.r = 0x80;
+		color.g = 0x80;
+		color.b = 0xff;
+		strcat(buf, "/div ");
+		if (wv->wi->ch_config & 4)
+			strcat(buf, "DC");
+		else
+			strcat(buf, "AC");
 
-	if (wv->sbuf[0].invert_y)
-		strcat(buf, " INV");
+		if (wv->sbuf[0].invert_y)
+			strcat(buf, " INV");
 
-	render_text(buf, wv->x_ofs + 300, 2, color);
+		render_text(buf, wv->x_ofs + 300, 2, color);
+	}
 
 	// V/div ch 2
-	if (wv->wi->scnt > 1) {
+	if (wv->wi->ch_config & 2) {
 		val = ((float)wv->target_h * wv->wi->scale[1]) / (float)V_DIVS;
 		print_volt(buf, val);
 		color.r = 0xff;
@@ -318,7 +320,7 @@ void wview_redraw(wview_t * wv)
 
 				// trigger
 				if ((!trigger_done)
-				    && (scnt >= wv->wi->pre)) {
+				    && ((wv->x_pos + scnt) >= wv->wi->pre)) {
 					vlineColor(wv->wv_sf, x,
 						   1,
 						   wv->target_h - 2,
