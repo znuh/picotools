@@ -640,6 +640,9 @@ wview_t *wview_init(int w, int h)
 	wv->wv_rect.w = w;
 	wv->wv_rect.h = h;
 
+	wv->x_mark1 = 0;
+	wv->x_mark2 = 0;
+
 	assert((sbuf = malloc(sizeof(samplebuf_t) * 2)));
 	wv->sbuf = sbuf;
 	wv->sbuf_cnt = 0;
