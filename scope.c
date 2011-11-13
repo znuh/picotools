@@ -72,6 +72,8 @@ GCond *cond = NULL;
 
 void scope_stop(void);
 
+float trigger_delay = 0.0;
+
 static int scope_quit;
 static int cb_quit;
 
@@ -279,6 +281,8 @@ int scope_sample_config(unsigned long *tbase, unsigned long *buflen) {
 	return 0;
 }
 
+static long timebase_ns;
+
 int _scope_sample_config(unsigned long *tbase, unsigned long *buflen)
 {
 	long ns;
@@ -291,7 +295,7 @@ int _scope_sample_config(unsigned long *tbase, unsigned long *buflen)
 	reconf_start();
 	*/
 	res = ps5000GetTimebase(handle, *tbase, *buflen, &ns, 0, &samples, 0);
-	
+	timebase_ns = ns;
 //	reconf_done();
 
 	//printf("%ld: %ld ns %ld samples\n", res, ns, samples);
@@ -403,6 +407,7 @@ int _scope_run(void)
 	PICO_STATUS res;
 	unsigned long pre = _scope_config.pre_trig, post =
 	    _scope_config.post_trig;
+	unsigned long delay;
 
 //	scope_stop();
 //	scope_running = 0;
@@ -420,6 +425,13 @@ int _scope_run(void)
 	if(cb_waiting)
 		cb_drop = 1;
 	pthread_mutex_unlock(&cb_mutex);
+
+	delay = timebase_ns;
+	delay /= 8;
+
+	res = ps5000SetTriggerDelay(handle, delay);
+	if (res != PICO_OK)
+		printf("SetTriggerDelay FAIL: %lx\n", res);
 	
 	res =
 	    ps5000RunBlock(handle, pre, post, _scope_config.timebase, 0, NULL, 0,

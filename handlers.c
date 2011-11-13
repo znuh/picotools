@@ -34,6 +34,8 @@ GtkToggleButton *auto_btn;
 guint reconf_timer = -1;
 int reconf_timer_active = 0;
 
+extern float trigger_delay;
+
 extern scope_config_t scope_config;
 extern SCOPE_TYPE_t scope_type;
 
@@ -508,6 +510,24 @@ void on_siggen_apply_btn_clicked(GtkWidget * w, gpointer priv)
 		else
 			gtk_label_set_text(GTK_LABEL(w), "OK");
 	}
+}
+
+void on_delay_entry_changed(GtkWidget * w, gpointer priv)
+{
+	const char *txt = gtk_entry_get_text(GTK_ENTRY(w));
+	float val = strtof(txt, NULL);
+	
+	if(strchr(txt, 'n'))
+	   val *= 1;
+	else if(strchr(txt, 'u'))
+	   val *= 1000;
+	else if(strchr(txt, 'm'))
+	   val *= 1000000;
+	else
+	   val *= 1000000000;
+	//printf("%f\n",val);
+
+	trigger_delay = val;
 }
 
 void init(void)
