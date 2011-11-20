@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Pico Tools
+GenericName=pico scope
+Comment=manage and display pico scope data
+Icon=pico
+Exec=pico
+Terminal=false
+Categories=GNOME;Utility;
