@@ -37,6 +37,14 @@ This is some ugly crap: 100% kludges, but no time for a rewrite yet
  $ sudo make install
 ```
 
+## Run - Console
+
+```
+ $ pico
+```
+
+Gnome desktop menu: ```Applications -> Accessories -> Pico Tools```
+
 # Authors
 
  * znuh - https://github.com/znuh
