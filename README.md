@@ -6,16 +6,18 @@ This is some ugly crap: 100% kludges, but no time for a rewrite yet
 
 ![screen-00](https://raw.github.com/koppi/picotools/master/screen-00.png "picotools gnuplot screenshot 00")
 
-# Build / Install
+# Build / Install - Ubuntu 11.04
 
 ## Build dependencies (64 bit)
 
+```
  $ sudo apt-get install alien fakeroot
+```
 
 ### libps5000_R1_RA - PicoScope Linux drivers
 
  * Go to http://labs.picotech.com/#linux
- * Download the 64–bit PS5000 Linux driver
+ * Download the 64–bit PS5000 Linux driver:
 
 ```
  $ wget http://labs.picotech.com/software/libps5000_R1_3_6_6_3.x86_64.tgz
@@ -28,13 +30,17 @@ This is some ugly crap: 100% kludges, but no time for a rewrite yet
 
 ### libraries
 
+```
  $ sudo apt-get install libsdl-ttf2.0-dev libsdl-gfx1.2-dev libglade2-dev
+```
 
 ## Compile / Install
 
+```
  $ sudo make install
+```
 
-# Author
+# Authors
 
  * znuh - https://github.com/znuh
 
