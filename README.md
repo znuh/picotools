@@ -34,11 +34,13 @@ This is some ugly crap: 100% kludges, but no time for a rewrite yet
 ## compile / install / run
 
 ```
+ $ make
  $ sudo make install
-```
-
-```
  $ pico
+```
+or
+```
+ $ sudo pico
 ```
 
 Or go to the menu: ```Applications -> Accessories -> Pico Tools```
