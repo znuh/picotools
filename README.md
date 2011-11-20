@@ -31,7 +31,7 @@ This is some ugly crap: 100% kludges, but no time for a rewrite yet
 ### libraries
 
 ```
- $ sudo apt-get install libsdl-ttf2.0-dev libsdl-gfx1.2-dev libglade2-dev
+ $ sudo apt-get install libsdl-ttf2.0-dev libsdl-gfx1.2-dev libglade2-dev libglade2-dev
 ```
 
 ## Compile / Install
