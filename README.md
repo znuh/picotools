@@ -6,9 +6,9 @@ This is some ugly crap: 100% kludges, but no time for a rewrite yet
 
 ![screen-00](https://raw.github.com/koppi/picotools/master/screen-00.png "picotools gnuplot screenshot 00")
 
-# Build / Install - Ubuntu 11.04
+# Build - Ubuntu 11.04 (64 bit)
 
-## Build dependencies (64 bit)
+## dependencies
 
 ### libps5000_R1_RA - PicoScope Linux drivers
 
@@ -31,19 +31,17 @@ This is some ugly crap: 100% kludges, but no time for a rewrite yet
  $ sudo apt-get install libsdl-ttf2.0-dev libsdl-gfx1.2-dev libglade2-dev libglade2-dev
 ```
 
-## Compile / Install
+## compile / install / run
 
 ```
  $ sudo make install
 ```
 
-## Run - Console
-
 ```
  $ pico
 ```
 
-Gnome desktop menu: ```Applications -> Accessories -> Pico Tools```
+Or go to the menu: ```Applications -> Accessories -> Pico Tools```
 
 # Authors
 
