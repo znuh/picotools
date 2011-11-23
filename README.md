@@ -4,7 +4,9 @@ Linux tool(s) for working with the PicoScope(R) PS5203/5204.
 
 This is some ugly crap: 100% kludges, but no time for a rewrite yet
 
-![screen-00](https://raw.github.com/znuh/picotools/master/screen-00.png "picotools gnuplot screenshot 00")
+![screen-00](https://raw.github.com/znuh/picotools/master/screen-00.png "picotools gnuplot screenshot")
+
+![screen-01](https://raw.github.com/znuh/picotools/master/screen-00.png "picotools work place")
 
 ## build dependencies
 
