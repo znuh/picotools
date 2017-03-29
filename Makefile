@@ -26,29 +26,31 @@ MACOSXINSTALL = /Applications/Pico.app
 MACOSXFILES = packaging/macosx
 
 # find libps5000
-libdc-local := $(wildcard /usr/local/lib/libps5000.la)
-libdc-local64 := $(wildcard /usr/local/lib/libps5000.la)
-libdc-usr := $(wildcard /usr/lib/libps5000.la)
-libdc-usr64 := $(wildcard /usr/lib/libps5000.la)
+libdc-local := $(wildcard /opt/picoscope/lib/libps5000.la)
+libdc-local64 := $(wildcard /opt/picoscope/lib/libps5000.la)
+libdc-usr := $(wildcard /opt/picoscope/lib/libps5000.la)
+libdc-usr64 := $(wildcard /opt/picoscope/lib/libps5000.la)
 
 ifneq ($(strip $(libdc-local)),)
         LIBDIR = /usr/local
-        LIBINCLUDES = -I$(LIBDIR)/include/libps5000-1.3
+        LIBINCLUDES = -I$(LIBDIR)/include/libps5000-1.5
         LIBARCHIVE = $(LIBDIR)/lib/libps5000.la
 else ifneq ($(strip $(libdc-local64)),)
         LIBDIR = /usr/local
-        LIBINCLUDES = -I$(LIBDIR)/include/libps5000-1.3
+        LIBINCLUDES = -I$(LIBDIR)/include/libps5000-1.5
         LIBARCHIVE = $(LIBDIR)/lib/libps5000.la
 else ifneq ($(strip $(libdc-usr)),)
         LIBDIR = /usr
-        LIBINCLUDES = -I$(LIBDIR)/include/libps5000-1.3
+        LIBINCLUDES = -I$(LIBDIR)/include/libps5000-1.5
         LIBARCHIVE = $(LIBDIR)/lib/libps5000.la
 else ifneq ($(strip $(libdc-usr64)),)
         LIBDIR = /usr
-        LIBINCLUDES = -I$(LIBDIR)/include/libps5000-1.3
+        LIBINCLUDES = -I$(LIBDIR)/include/libps5000-1.5
         LIBARCHIVE = $(LIBDIR)/lib/libps5000.la
 else
-$(error Cannot find libps5000 - please edit Makefile)
+#$(error Cannot find libps5000 - please edit Makefile)
+		LIBINCLUDES = -I/opt/picoscope//include
+		#LIBARCHIVE = /opt/picoscope/lib/libps5000.la
 endif
 
 # Get libusb if it exists, but don't complain about it if it doesn't.
@@ -56,23 +58,23 @@ LIBUSB = $(shell $(PKGCONFIG) --libs libusb-1.0 2> /dev/null)
 LIBGTK = $(shell $(PKGCONFIG) --libs gtk+-2.0 glib-2.0 gconf-2.0 libglade-2.0)
 LIBSDL = $(shell $(PKGCONFIG) --libs sdl) -lSDL_gfx -lSDL_ttf
 LIBCFLAGS = $(LIBINCLUDES) $(shell $(PKGCONFIG) --cflags sdl)
-LIBPS = -lps5000 $(LIBUSB)
+LIBPS = -L/opt/picoscope/lib -lps5000 $(LIBUSB)
 
 LIBS = $(LIBSDL) $(LIBXML2) $(LIBGTK) $(LIBPS) -lpthread
 
 OBJS = main.o scope.o handlers.o wview/wview.o wview/sdl_display.o wview/scrollbar.o $(RESFILE)
 
 $(NAME): $(OBJS)
-	$(CC) -rdynamic $(LDFLAGS) -o $(NAME) $(OBJS) $(LIBS)
+	$(CC) -rdynamic $(LIBINCLUDES) $(LDFLAGS) -o $(NAME) $(OBJS) $(LIBS)
 
 main.o: main.c
-	$(CC) $(CFLAGS) $(GLADECFLAGS) $(GTK2CFLAGS) $(GLIB2CFLAGS) $(GCONF2CFLAGS) -c main.c
+	$(CC) $(CFLAGS) $(LIBINCLUDES) $(GLADECFLAGS) $(GTK2CFLAGS) $(GLIB2CFLAGS) $(GCONF2CFLAGS) -c main.c
 
 handlers.o: handlers.c
-	$(CC) $(CFLAGS) $(GLADECFLAGS) $(GTK2CFLAGS) $(GLIB2CFLAGS) $(GCONF2CFLAGS) -c handlers.c
+	$(CC) $(CFLAGS) $(LIBINCLUDES) $(GLADECFLAGS) $(GTK2CFLAGS) $(GLIB2CFLAGS) $(GCONF2CFLAGS) -c handlers.c
 
 scope.o: scope.c
-	$(CC) $(CFLAGS) $(GLADECFLAGS) $(GTK2CFLAGS) $(GLIB2CFLAGS) $(GCONF2CFLAGS) -c scope.c
+	$(CC) $(CFLAGS) $(LIBINCLUDES) $(GLADECFLAGS) $(GTK2CFLAGS) $(GLIB2CFLAGS) $(GCONF2CFLAGS) -c scope.c
 
 install: $(NAME)
 	$(INSTALL) -d -m 755 $(BINDIR)

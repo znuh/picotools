@@ -17,7 +17,7 @@
 #define PSCOPE_H
 
 #include <stdint.h>
-#include <libps5000-1.3/ps5000Api.h>
+#include <libps5000-1.5/ps5000Api.h>
 
 typedef enum {
 	SCOPE_NONE,

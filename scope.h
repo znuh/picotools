@@ -16,7 +16,7 @@
 #ifndef SCOPE_H
 #define SCOPE_H
 
-#include <libps5000-1.3/ps5000Api.h>
+#include <libps5000-1.5/ps5000Api.h>
 
 #define SCOPE_CHANGED_CH1		(1<<0)
 #define SCOPE_CHANGED_CH2		(1<<1)
