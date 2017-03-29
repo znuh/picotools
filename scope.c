@@ -45,21 +45,21 @@ int				drop_values			= 1;
 pthread_mutex_t	reconf_mutex 			= PTHREAD_MUTEX_INITIALIZER;
 int				reconf_active = 0;
 
-static unsigned long capture_cnt = 0;
+static uint32_t capture_cnt = 0;
 
 scope_config_t _scope_config;
 scope_config_t scope_config;
 
-short handle;
+int16_t handle;
 
 SCOPE_TYPE_t scope_type = SCOPE_NONE;
 
-extern unsigned long ns;
+extern uint32_t ns;
 
-static short *d = NULL;
+static int16_t *d = NULL;
 uint8_t *waves = NULL;
 
-int wave_size = 0;
+int32_t wave_size = 0;
 
 wview_t *wv = NULL;
 
@@ -82,14 +82,14 @@ static int cb_drop = 0;
 
 int scope_done(void);
 
-void PREF4 CallBackBlock (short handle, PICO_STATUS status, void * pParameter) {
+void PREF4 CallBackBlock (int16_t handle, PICO_STATUS status, void * pParameter) {
 	pthread_mutex_lock(&cb_mutex);
 	cb_waiting = 1;
 	pthread_cond_signal(&cb_cond);
 	pthread_mutex_unlock(&cb_mutex);
 }
 
-void cb_process(int *bla) {
+void cb_process(int32_t *bla) {
 	
 	while(1) {
 		pthread_mutex_lock(&cb_mutex);
@@ -135,7 +135,7 @@ int viewer_init(void)
 {
 	int max_samples = 1024 * 1024 * (scope_type == SCOPE_PS5204 ? 128 : 64);
 
-	assert((d = malloc(max_samples * sizeof(short))));
+	assert((d = malloc(max_samples * sizeof(int16_t))));
 
 	wave_size = max_samples + sizeof(waveinfo_t);
 
@@ -248,8 +248,8 @@ int scope_channel_config(int ch) {
 int _scope_channel_config(int ch)
 {
 	PS5000_CHANNEL scope_ch = ch ? PS5000_CHANNEL_B : PS5000_CHANNEL_A;
-	short enable = (_scope_config.channel_config >> ch) & 1;
-	short dc = (_scope_config.channel_config >> (ch + 2)) & 1;
+	int16_t enable = (_scope_config.channel_config >> ch) & 1;
+	int16_t dc = (_scope_config.channel_config >> (ch + 2)) & 1;
 	PS5000_RANGE range = _scope_config.range[ch];
 	int res;
 	
@@ -268,7 +268,7 @@ int _scope_channel_config(int ch)
 	return res;
 }
 
-int scope_sample_config(unsigned long *tbase, unsigned long *buflen) {
+int scope_sample_config(uint32_t *tbase, uint32_t *buflen) {
 	pthread_mutex_lock(&scope_mutex);
 	scope_config.timebase = *tbase;
 	scope_config.samples = *buflen;
@@ -281,12 +281,12 @@ int scope_sample_config(unsigned long *tbase, unsigned long *buflen) {
 	return 0;
 }
 
-static long timebase_ns;
+static int32_t timebase_ns;
 
-int _scope_sample_config(unsigned long *tbase, unsigned long *buflen)
+int _scope_sample_config(uint32_t *tbase, uint32_t *buflen)
 {
-	long ns;
-	long samples;
+	int32_t ns;
+	int32_t samples;
 	PICO_STATUS res;
 /*
 	if (!scope_type)
@@ -303,7 +303,7 @@ int _scope_sample_config(unsigned long *tbase, unsigned long *buflen)
 	return ((res == PICO_OK) ? 0 : -1);
 }
 
-void copy_wave(uint8_t * dst, short *d1, short *d2, waveinfo_t * wi)
+void copy_wave(uint8_t * dst, int16_t *d1, int16_t *d2, waveinfo_t * wi)
 {
 	uint8_t *d;
 	int cnt;
@@ -333,10 +333,10 @@ void copy_wave(uint8_t * dst, short *d1, short *d2, waveinfo_t * wi)
 	}
 }
 
-void save_wave(char *fname, short *d1, short *d2, waveinfo_t * wi)
+void save_wave(char *fname, int16_t *d1, int16_t *d2, waveinfo_t * wi)
 {
 	int fd = open(fname, O_CREAT | O_RDWR, S_IWUSR | S_IRUSR);
-	int len = sizeof(waveinfo_t) + wi->scnt;
+	size_t len = sizeof(waveinfo_t) + wi->scnt;
 	uint8_t *mapped;
 
 	if (fd < 0)
@@ -357,7 +357,7 @@ void save_wave(char *fname, short *d1, short *d2, waveinfo_t * wi)
 
 }
 
-void save_ascii(char *fname, short *d1, short *d2, waveinfo_t * wi)
+void save_ascii(char *fname, int16_t *d1, int16_t *d2, waveinfo_t * wi)
 {
 	FILE *fl = fopen(fname, "w");
 	int cnt;
@@ -405,9 +405,9 @@ int scope_run(int s) {
 int _scope_run(void)
 {
 	PICO_STATUS res;
-	unsigned long pre = _scope_config.pre_trig, post =
+	uint32_t pre = _scope_config.pre_trig, post =
 	    _scope_config.post_trig;
-	unsigned long delay;
+	uint32_t delay;
 
 //	scope_stop();
 //	scope_running = 0;
@@ -431,14 +431,14 @@ int _scope_run(void)
 
 	res = ps5000SetTriggerDelay(handle, delay);
 	if (res != PICO_OK)
-		printf("SetTriggerDelay FAIL: %lx\n", res);
+		printf("SetTriggerDelay FAIL: %x\n", res);
 	
 	res =
 	    ps5000RunBlock(handle, pre, post, _scope_config.timebase, 0, NULL, 0,
 			   CallBackBlock, NULL);
 
 	if (res != PICO_OK)
-		printf("run FAIL: %lx\n", res);
+		printf("run FAIL: %x\n", res);
 	else
 		scope_running = 1;
 
@@ -459,9 +459,9 @@ void read_data(void)
 {
 	//char fname[64], buf[128] = "./wview/wview ";
 	waveinfo_t wi;
-	unsigned long scnt = _scope_config.samples;
+	uint32_t scnt = _scope_config.samples;
 	time_t now = time(NULL);
-	short *d1 = d, *d2 = d;
+	int16_t *d1 = d, *d2 = d;
 	int channels = _scope_config.channel_config;
 	PICO_STATUS res;
 //	int run_again = scope_done();
@@ -573,7 +573,7 @@ int _scope_trigger_config(void)
 						      (_scope_config.trig_enabled
 						       ? 1 : 0), 1, 0);
 		if (res != PICO_OK) {
-			printf("SetTriggerChannelProperties: %ld\n", res);
+			printf("SetTriggerChannelProperties: %d\n", res);
 			goto error;
 		}
 	}
@@ -607,7 +607,7 @@ int _scope_trigger_config(void)
 						      (_scope_config.trig_enabled
 						       ? 1 : 0));
 		if (res != PICO_OK) {
-			printf("SetTriggerChannelConditions: %ld\n", res);
+			printf("SetTriggerChannelConditions: %d\n", res);
 			goto error;
 		}
 	}
@@ -634,7 +634,7 @@ int _scope_trigger_config(void)
 						      dir[2], dir[3], dir[4],
 						      dir[5]);
 		if (res != PICO_OK) {
-			printf("SetTriggerChannelDirections: %ld\n", res);
+			printf("SetTriggerChannelDirections: %d\n", res);
 			goto error;
 		}
 	}
@@ -653,7 +653,7 @@ int _scope_trigger_config(void)
 	return res;
 }
 
-int scope_siggen_config(long ofs, unsigned long pk2pk, float f, short wform)
+int scope_siggen_config(int32_t ofs, uint32_t pk2pk, float f, int16_t wform)
 {
 	int ret = 0;
 	PICO_STATUS res;
@@ -735,7 +735,7 @@ void scope_process(int *bla) {
 int scope_open(int dryrun)
 {
 	char line[80];
-	short i, r = 0;
+	int16_t i, r = 0;
 	PICO_STATUS res = PICO_OK;
 
 	if (!dryrun) {

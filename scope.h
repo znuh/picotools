@@ -16,6 +16,8 @@
 #ifndef SCOPE_H
 #define SCOPE_H
 
+#include <stdint.h>
+
 #include <libps5000-1.5/ps5000Api.h>
 
 #define SCOPE_CHANGED_CH1		(1<<0)
@@ -44,14 +46,14 @@ typedef struct scope_config_s {
 	uint8_t channel_config;	// (AC/DC, enabled) * 2
 
 	// number of samples
-	unsigned long samples;
+	uint32_t samples;
 
 	// timebase (srate)
-	unsigned long timebase;
+	uint32_t timebase;
 
 	PS5000_CHANNEL trig_ch;
-	int trig_enabled;
-	short trig_level;
+	uint32_t trig_enabled;
+	int16_t trig_level;
 
 	// depends on trig. src
 	TRIGGER_CONDITIONS trig_cond;
@@ -63,9 +65,9 @@ typedef struct scope_config_s {
 	TRIGGER_CHANNEL_PROPERTIES trig_prop;
 
 	// trigger ofs
-	unsigned long trig_ofs;
-	unsigned long pre_trig;
-	unsigned long post_trig;
+	uint32_t trig_ofs;
+	uint32_t pre_trig;
+	uint32_t post_trig;
 
 	/*
 	   chA
@@ -78,17 +80,17 @@ typedef struct scope_config_s {
 	   trig_ofs
 	 */
 	int run;
-	unsigned long changed;
+	uint32_t changed;
 } scope_config_t;
 
 int scope_open(int dryrun);
 void scope_close(void);
 int scope_channel_config(int ch);
-int scope_sample_config(unsigned long *tbase, unsigned long *buflen);
+int scope_sample_config(uint32_t *tbase, uint32_t *buflen);
 int scope_run(int single);
 void scope_stop(void);
 int scope_trigger_config(void);
 void viewer_close(void);
-int scope_siggen_config(long ofs, unsigned long pk2pk, float f, short wform);
+int scope_siggen_config(int32_t ofs, uint32_t pk2pk, float f, int16_t wform);
 
 #endif

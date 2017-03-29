@@ -86,11 +86,11 @@ int scope_done(void)
 
 /***************** srate/buf reconf timer **************************/
 
-unsigned long sbuf_len = 0;
-unsigned long tbase = 0;
-unsigned long selected_tbase = 0;
-unsigned long samples_selected = 0;
-unsigned long ns = 0;
+uint32_t sbuf_len = 0;
+uint32_t tbase = 0;
+uint32_t selected_tbase = 0;
+uint32_t samples_selected = 0;
+uint32_t ns = 0;
 float srate = 0;
 
 gboolean timeout(gpointer data)
@@ -187,7 +187,7 @@ void update_trigger_voltage(void)
 void update_trigger_offset(void)
 {
 	char buf[64], tbuf[64];
-	unsigned long long scaled_val = sbuf_len;
+	uint64_t scaled_val = sbuf_len;
 	float pre, post;
 
 	scaled_val *= scope_config.trig_ofs;
@@ -257,9 +257,9 @@ void update_srate(void)
 void update_samples(void)
 {
 	char buf[64];
-	int samples = samples_selected;
-	int shift;
-	int remainder;
+	int32_t samples = samples_selected;
+	int32_t shift;
+	int32_t remainder;
 	char ch_str[8] = "";
 
 	shift = (samples >> 4) + 12;
@@ -423,10 +423,10 @@ void on_siggen_btn_clicked(GtkWidget * w, gpointer priv)
 	gtk_window_present(GTK_WINDOW(glade_xml_get_widget(glade, "window2")));
 }
 
-long parse_volts(const gchar *v) {
+int32_t parse_volts(const gchar *v) {
 	char *v_;
 	float fval = strtof(v, &v_)*1000000;
-	long res = fval;
+	int32_t res = fval;
 	
 	if((*v_) == 'm')
 		res /=1000;
