@@ -679,7 +679,7 @@ wview_t *wview_init(int w, int h)
 
 	assert((font =
 		TTF_OpenFont
-		("/usr/share/fonts/truetype/ttf-dejavu/DejaVuSansMono.ttf",
+		("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
 		 12)));
 
 	assert((sb = scrollbar_create(sdl.screen, 0, wv->target_h + wv->y_ofs * 2, wv->target_w + 20, 12, wv->target_w, wv->target_w + 1)));	//TODO
