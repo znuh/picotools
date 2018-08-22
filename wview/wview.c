@@ -277,13 +277,13 @@ void wview_redraw(wview_t * wv)
 	uint32_t color[] = { 0x8080ffff, 0xff8080ff };
 	int y_ofs = wv->y_ofs;
 	unsigned long scnt;
-	float pixels_per_sample = ((float)wv->target_w / (float)wv->x_cnt);
-	float x_f = 0;
+	double pixels_per_sample = ((float)wv->target_w / (float)wv->x_cnt);
+	double x_f = 0;
 	int buf_cnt;
 	int trigger_done = 0;
 	int x = 0;
 
-	//printf("%f\n",step);
+	//printf("target_w %d x_cnt %d pps %f\n",wv->target_w,wv->x_cnt,pixels_per_sample);
 	//printf("x_cnt %d\n",wv->x_cnt);
 	
 	// foreach sample buffer
