@@ -32,7 +32,7 @@ int main(int argc, char **argv)
 
 	assert(!(map_file(&mf, argv[1], 0, 0)));
 
-	assert((wv = wview_init(1024, 512)));
+	assert((wv = wview_init(1890, 512)));
 
 	wi = (waveinfo_t *) mf.ptr;
 	assert(mf.len >= sizeof(waveinfo_t));
