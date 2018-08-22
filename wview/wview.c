@@ -278,7 +278,7 @@ void wview_redraw(wview_t * wv)
 	int y_ofs = wv->y_ofs;
 	unsigned long scnt;
 	double pixels_per_sample = ((float)wv->target_w / (float)wv->x_cnt);
-	double x_f = 0;
+	double x_f = 0; /* x position counter for wview surface */
 	int buf_cnt;
 	int trigger_done = 0;
 	int x = 0;
@@ -315,6 +315,7 @@ void wview_redraw(wview_t * wv)
 
 			x_f += pixels_per_sample;
 
+			/* all samples for current horizontal line collected? */
 			if(((int)x_f) > x) {
 				int did_vline = 0;
 
