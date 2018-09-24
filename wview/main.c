@@ -32,7 +32,7 @@ int main(int argc, char **argv)
 
 	assert(!(map_file(&mf, argv[1], 0, 0)));
 
-	assert((wv = wview_init(1920-30, 512)));
+	assert((wv = wview_init(1400-30, 512)));
 
 	wi = (waveinfo_t *) mf.ptr;
 	assert(mf.len >= sizeof(waveinfo_t));
@@ -53,9 +53,9 @@ int main(int argc, char **argv)
 
 		wv->sbuf[0].y_ofs = 256;	// channel y offset
 		wv->sbuf[0].invert_y = 0;
-		wv->sbuf[0].max_val = 255;
-		wv->sbuf[0].min_val = 0;
-		wv->sbuf[0].dtype = UINT8;
+		wv->sbuf[0].max_val = 128;
+		wv->sbuf[0].min_val = -128;
+		wv->sbuf[0].dtype = INT8;
 
 		unmap_file(&mf);
 	}
