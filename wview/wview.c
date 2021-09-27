@@ -34,7 +34,7 @@ float samplebuf_get_sample(samplebuf_t * s, unsigned long sample)
 		res = ((int16_t *) d)[sample];
 		break;
 	case UINT16:
-		res = ((uint8_t *) d)[sample];
+		res = ((uint16_t *) d)[sample];
 		break;
 	case INT32:
 		res = ((int32_t *) d)[sample];
