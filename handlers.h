@@ -19,15 +19,15 @@
 #include <gtk/gtk.h>
 #include <glade/glade.h>
 
-GtkLabel *samples_lbl;
-GtkLabel *srate_lbl;
-GtkLabel *trig_volt_lbl;
-GtkLabel *trig_pre_lbl;
-GtkLabel *trig_post_lbl;
-GtkLabel *time_lbl;
+extern GtkLabel *samples_lbl;
+extern GtkLabel *srate_lbl;
+extern GtkLabel *trig_volt_lbl;
+extern GtkLabel *trig_pre_lbl;
+extern GtkLabel *trig_post_lbl;
+extern GtkLabel *time_lbl;
 
-GtkToggleButton *single_btn;
-GtkToggleButton *auto_btn;
+extern GtkToggleButton *single_btn;
+extern GtkToggleButton *auto_btn;
 
 void on_ch1_range_cbox_changed(GtkWidget * w, gpointer priv);
 void on_ch2_btn_toggled(GtkWidget * w, gpointer priv);
